@@ -8,8 +8,6 @@ const ENTRY_FILE = "demo/index.ts";
 
 const fileList = dt.toList({ filename: ENTRY_FILE, directory: path.dirname(ENTRY_FILE) });
 
-const isVariableDeclarator = (node, ident) => node.type === "VariableDeclarator" && node.id.name !== ident;
-
 const getDependencies = (ident: string) => {
     const dependants = [];
 
@@ -36,7 +34,7 @@ const getDependencies = (ident: string) => {
                                     (ancestor.type === "ClassDeclaration" || ancestor.type === "FunctionDeclaration" || ancestor.type === "VariableDeclarator")
                                     && ancestor.id.name !== currentIdent
                                 ) {
-                                    dependants.push({name: ancestor.id.name, type: ancestor.type, node: ancestor, file: fn});
+                                    dependants.push({name: ancestor.id.name, type: ancestor.type, file: fn, uses: currentIdent});
                                     dependantStack.push(ancestor.id.name);
                                 }
                             }
