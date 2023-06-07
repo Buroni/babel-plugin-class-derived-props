@@ -1,0 +1,49 @@
+import fs from "fs";
+import path from "path";
+import dt from "dependency-tree";
+import { parseSync } from "@babel/core";
+import { walk } from "estree-walker";
+
+const ENTRY_FILE = "demo/index.ts";
+
+const fileList = dt.toList({ filename: ENTRY_FILE, directory: path.dirname(ENTRY_FILE) });
+
+const isVariableDeclarator = (node, ident) => node.type === "VariableDeclarator" && node.id.name !== ident;
+
+const getDependencies = (ident: string) => {
+    const dependants = [];
+
+    for (const fn of fileList) {
+        const content = fs.readFileSync(fn, "utf-8");
+        const ast = parseSync(content) as any;
+        const stack = [];
+
+        walk(ast,
+            {
+                enter(node, parent) {
+                    if (node.type === "Identifier" && node.name === ident) {
+                        while (stack.length) {
+                            const { ancestor, ancestorParent } = stack.pop();
+                            if (ancestorParent.type === "Program") {
+                                stack.length = 0;
+                            }
+                            if (
+                                (ancestor.type === "ClassDeclaration" || ancestor.type === "FunctionDeclaration" || ancestor.type === "VariableDeclarator")
+                                && ancestor.id.name !== ident
+                            ) {
+                                dependants.push({name: ancestor.id.name, type: ancestor.type, node: ancestor, file: fn});
+                            }
+                        }
+                    }
+                    stack.push({ ancestor: node, ancestorParent: parent });
+                }
+            }
+        );
+    }
+    return dependants
+};
+
+
+const deps = getDependencies("Clazz");
+// console.dir(deps, { depth: 4 });
+console.log(deps);
