@@ -11,11 +11,11 @@ const fileList = dt.toList({
     directory: path.dirname(ENTRY_FILE),
 });
 
-const toTree = (ident: string, dependancies: any[], tree: any = []) => {
-    for (const d of dependancies) {
+const toTree = (ident: string, dependencies: any[], tree: any = []) => {
+    for (const d of dependencies) {
         if (d.uses === ident) {
             tree.push(d);
-            d.dependencies = toTree(d.name, dependancies, d.chilren);
+            d.dependencies = toTree(d.name, dependencies, d.chilren);
         }
     }
     return tree;
