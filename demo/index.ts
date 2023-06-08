@@ -14,4 +14,4 @@ class Clazz {
     }
 }
 
-const clazz = new Clazz;
+const clazz = new Clazz();

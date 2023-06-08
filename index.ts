@@ -6,7 +6,10 @@ import { walk } from "estree-walker";
 
 const ENTRY_FILE = "demo/index.ts";
 
-const fileList = dt.toList({ filename: ENTRY_FILE, directory: path.dirname(ENTRY_FILE) });
+const fileList = dt.toList({
+    filename: ENTRY_FILE,
+    directory: path.dirname(ENTRY_FILE),
+});
 
 const toTree = (ident: string, dependancies: any[], tree: any = []) => {
     for (const d of dependancies) {
@@ -25,40 +28,42 @@ const getDependencies = (ident: string) => {
 
     const walkFileAST = (ast: any, currentIdent: string, fn: string) => {
         const stack = [];
-        walk(ast,
-            {
-                enter(node, parent) {
-                    if (node.type === "Identifier" && node.name === currentIdent) {
-                        while (stack.length) {
-                            const { ancestor, ancestorParent } = stack.pop();
-                            if (ancestorParent.type === "Program") {
-                                stack.length = 0;
-                            }
+        walk(ast, {
+            enter(node, parent) {
+                if (node.type === "Identifier" && node.name === currentIdent) {
+                    while (stack.length) {
+                        const { ancestor, ancestorParent } = stack.pop();
+                        if (ancestorParent.type === "Program") {
+                            stack.length = 0;
+                        }
+                        if (
+                            (ancestor.type === "ClassDeclaration" ||
+                                ancestor.type === "FunctionDeclaration" ||
+                                ancestor.type === "VariableDeclarator") &&
+                            ancestor.id.name !== currentIdent
+                        ) {
                             if (
-                                (
-                                    ancestor.type === "ClassDeclaration" ||
-                                    ancestor.type === "FunctionDeclaration" ||
-                                    ancestor.type === "VariableDeclarator"
+                                dependants.every(
+                                    (d) =>
+                                        d.name !== ancestor.id.name ||
+                                        d.uses !== currentIdent
                                 )
-                                && ancestor.id.name !== currentIdent
                             ) {
-                                if (dependants.every(d => d.name !== ancestor.id.name || d.uses !== currentIdent)) {
-                                    dependants.push({
-                                        name: ancestor.id.name,
-                                        type: ancestor.type,
-                                        file: fn,
-                                        uses: currentIdent,
-                                        dependencies: [],
-                                    });
-                                }
-                                dependantStack.push(ancestor.id.name);
+                                dependants.push({
+                                    name: ancestor.id.name,
+                                    type: ancestor.type,
+                                    file: fn,
+                                    uses: currentIdent,
+                                    dependencies: [],
+                                });
                             }
+                            dependantStack.push(ancestor.id.name);
                         }
                     }
-                    stack.push({ ancestor: node, ancestorParent: parent });
                 }
-            }
-        );
+                stack.push({ ancestor: node, ancestorParent: parent });
+            },
+        });
     };
 
     const traverseFileList = (currentIdent: string) => {
@@ -75,7 +80,6 @@ const getDependencies = (ident: string) => {
     }
     return dependants;
 };
-
 
 const deps = getDependencies("MY_CONST");
 // console.dir(deps, { depth: 4 });
