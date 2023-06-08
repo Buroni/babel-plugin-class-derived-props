@@ -9,9 +9,14 @@ class Dependencies {
     public ident: string;
 
     private _tree: any[];
+    private fileList: string[];
 
-    public constructor(ident: string) {
+    public constructor(ident: string, entryFile: string) {
         this.ident = ident;
+        this.fileList = dt.toList({
+            filename: entryFile,
+            directory: path.dirname(entryFile),
+        });
         this.getDependencies();
     }
 
@@ -79,7 +84,7 @@ class Dependencies {
     }
 
     private traverseFileList(currentIdent: string, dependantStack: string[]) {
-        for (const fn of fileList) {
+        for (const fn of this.fileList) {
             const content = fs.readFileSync(fn, "utf-8");
             const ast = parseSync(content) as any;
             this.walkFileAST(ast, currentIdent, fn, dependantStack);
@@ -97,12 +102,5 @@ class Dependencies {
     }
 }
 
-const ENTRY_FILE = "demo/index.ts";
-
-const fileList = dt.toList({
-    filename: ENTRY_FILE,
-    directory: path.dirname(ENTRY_FILE),
-});
-
-const d = new Dependencies("MY_CONST");
+const d = new Dependencies("MY_CONST", "demo/index.ts");
 console.dir(d.tree, { depth: 5 });
