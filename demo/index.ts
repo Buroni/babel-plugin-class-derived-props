@@ -1,4 +1,4 @@
-import { MY_CONST } from "./a";
+import { MY_CONST, fromA } from "./a";
 
 const showMessage = () => void console.log(MY_CONST);
 
@@ -8,6 +8,10 @@ function msgFn() {
 
 class Clazz {
     c = MY_CONST;
+
+    foo() {
+        fromA();
+    }
 }
 
 const clazz = new Clazz;

@@ -8,6 +8,16 @@ const ENTRY_FILE = "demo/index.ts";
 
 const fileList = dt.toList({ filename: ENTRY_FILE, directory: path.dirname(ENTRY_FILE) });
 
+const toTree = (ident: string, dependancies: any[], tree: any = []) => {
+    for (const d of dependancies) {
+        if (d.uses === ident) {
+            tree.push(d);
+            d.dependencies = toTree(d.name, dependancies, d.chilren);
+        }
+    }
+    return tree;
+};
+
 const getDependencies = (ident: string) => {
     const dependants = [];
 
@@ -32,12 +42,15 @@ const getDependencies = (ident: string) => {
                                 )
                                 && ancestor.id.name !== currentIdent
                             ) {
-                                dependants.push({
-                                    name: ancestor.id.name,
-                                    type: ancestor.type,
-                                    file: fn,
-                                    uses: currentIdent,
-                                });
+                                if (dependants.every(d => d.name !== ancestor.id.name || d.uses !== currentIdent)) {
+                                    dependants.push({
+                                        name: ancestor.id.name,
+                                        type: ancestor.type,
+                                        file: fn,
+                                        uses: currentIdent,
+                                        dependencies: [],
+                                    });
+                                }
                                 dependantStack.push(ancestor.id.name);
                             }
                         }
@@ -60,10 +73,10 @@ const getDependencies = (ident: string) => {
         const currentIdent = dependantStack.pop();
         traverseFileList(currentIdent);
     }
-    return dependants
+    return dependants;
 };
 
 
 const deps = getDependencies("MY_CONST");
 // console.dir(deps, { depth: 4 });
-console.log(deps);
+console.dir(toTree("MY_CONST", deps), { depth: 5 });
