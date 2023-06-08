@@ -10,13 +10,19 @@ class Dependencies {
 
     private _tree: any[];
     private fileList: string[];
+    private opts: any;
 
-    public constructor(ident: string, entryFile: string) {
+    public constructor(
+        ident: string,
+        entryFile: string,
+        opts: { countImports: boolean } = { countImports: false }
+    ) {
         this.ident = ident;
         this.fileList = dt.toList({
             filename: entryFile,
             directory: path.dirname(entryFile),
         });
+        this.opts = opts;
         this.getDependencies();
     }
 
@@ -38,6 +44,15 @@ class Dependencies {
         return this.dependencies;
     }
 
+    private noExistingDependency(ident: string, ancestor: any, fn: string) {
+        return this.dependencies.every(
+            (d) =>
+                (ancestor.type !== "Program" && d.name !== ancestor.id.name) ||
+                d.uses !== ident ||
+                d.file !== fn
+        );
+    }
+
     private walkFileAST(
         ast: any,
         currentIdent: string,
@@ -48,9 +63,28 @@ class Dependencies {
         walk(ast, {
             enter: (node, parent) => {
                 if (node.type === "Identifier" && node.name === currentIdent) {
+                    let found = false;
                     while (stack.length) {
                         const { ancestor, ancestorParent } = stack.pop();
                         if (ancestorParent.type === "Program") {
+                            if (
+                                found === false &&
+                                this.noExistingDependency(
+                                    currentIdent,
+                                    ancestorParent,
+                                    fn
+                                ) &&
+                                (this.opts.countImports ||
+                                    ancestor.type !== "ImportDeclaration")
+                            ) {
+                                this.dependencies.push({
+                                    name: null,
+                                    type: "Program",
+                                    file: fn,
+                                    uses: currentIdent,
+                                    dependencies: [],
+                                });
+                            }
                             stack.length = 0;
                         }
                         if (
@@ -60,12 +94,13 @@ class Dependencies {
                             ancestor.id.name !== currentIdent
                         ) {
                             if (
-                                this.dependencies.every(
-                                    (d) =>
-                                        d.name !== ancestor.id.name ||
-                                        d.uses !== currentIdent
+                                this.noExistingDependency(
+                                    currentIdent,
+                                    ancestor,
+                                    fn
                                 )
                             ) {
+                                found = ancestor.id.name;
                                 this.dependencies.push({
                                     name: ancestor.id.name,
                                     type: ancestor.type,
@@ -102,5 +137,5 @@ class Dependencies {
     }
 }
 
-const d = new Dependencies("MY_CONST", "demo/index.ts");
+const d = new Dependencies("MY_CONST", "demo/index.ts", { countImports: true });
 console.dir(d.tree, { depth: 5 });
