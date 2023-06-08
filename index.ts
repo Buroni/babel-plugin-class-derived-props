@@ -4,32 +4,44 @@ import dt from "dependency-tree";
 import { parseSync } from "@babel/core";
 import { walk } from "estree-walker";
 
-const ENTRY_FILE = "demo/index.ts";
+class Dependencies {
+    public dependencies: any[] = [];
+    public ident: string;
 
-const fileList = dt.toList({
-    filename: ENTRY_FILE,
-    directory: path.dirname(ENTRY_FILE),
-});
+    private _tree: any[];
 
-const toTree = (ident: string, dependencies: any[], tree: any = []) => {
-    for (const d of dependencies) {
-        if (d.uses === ident) {
-            tree.push(d);
-            d.dependencies = toTree(d.name, dependencies, d.chilren);
+    public constructor(ident: string) {
+        this.ident = ident;
+        this.getDependencies();
+    }
+
+    public get tree() {
+        if (this._tree) {
+            return this._tree;
+        } else {
+            return this.toTree(this.ident);
         }
     }
-    return tree;
-};
 
-const getDependencies = (ident: string) => {
-    const dependants = [];
+    private getDependencies() {
+        const dependantStack = [this.ident];
 
-    const dependantStack = [ident];
+        while (dependantStack.length) {
+            const currentIdent = dependantStack.pop();
+            this.traverseFileList(currentIdent, dependantStack);
+        }
+        return this.dependencies;
+    }
 
-    const walkFileAST = (ast: any, currentIdent: string, fn: string) => {
+    private walkFileAST(
+        ast: any,
+        currentIdent: string,
+        fn: string,
+        dependantStack: string[]
+    ) {
         const stack = [];
         walk(ast, {
-            enter(node, parent) {
+            enter: (node, parent) => {
                 if (node.type === "Identifier" && node.name === currentIdent) {
                     while (stack.length) {
                         const { ancestor, ancestorParent } = stack.pop();
@@ -43,13 +55,13 @@ const getDependencies = (ident: string) => {
                             ancestor.id.name !== currentIdent
                         ) {
                             if (
-                                dependants.every(
+                                this.dependencies.every(
                                     (d) =>
                                         d.name !== ancestor.id.name ||
                                         d.uses !== currentIdent
                                 )
                             ) {
-                                dependants.push({
+                                this.dependencies.push({
                                     name: ancestor.id.name,
                                     type: ancestor.type,
                                     file: fn,
@@ -64,23 +76,33 @@ const getDependencies = (ident: string) => {
                 stack.push({ ancestor: node, ancestorParent: parent });
             },
         });
-    };
+    }
 
-    const traverseFileList = (currentIdent: string) => {
+    private traverseFileList(currentIdent: string, dependantStack: string[]) {
         for (const fn of fileList) {
             const content = fs.readFileSync(fn, "utf-8");
             const ast = parseSync(content) as any;
-            walkFileAST(ast, currentIdent, fn);
+            this.walkFileAST(ast, currentIdent, fn, dependantStack);
         }
-    };
-
-    while (dependantStack.length) {
-        const currentIdent = dependantStack.pop();
-        traverseFileList(currentIdent);
     }
-    return dependants;
-};
 
-const deps = getDependencies("MY_CONST");
-// console.dir(deps, { depth: 4 });
-console.dir(toTree("MY_CONST", deps), { depth: 5 });
+    private toTree(ident: string, tree: any = []) {
+        for (const d of this.dependencies) {
+            if (d.uses === ident) {
+                tree.push(d);
+                d.dependencies = this.toTree(d.name, d.chilren);
+            }
+        }
+        return tree;
+    }
+}
+
+const ENTRY_FILE = "demo/index.ts";
+
+const fileList = dt.toList({
+    filename: ENTRY_FILE,
+    directory: path.dirname(ENTRY_FILE),
+});
+
+const d = new Dependencies("MY_CONST");
+console.dir(d.tree, { depth: 5 });
