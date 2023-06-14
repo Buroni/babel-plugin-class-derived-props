@@ -1,9 +1,17 @@
-class Service {
+class BaseService {
+    url;
+}
+
+class Service extends BaseService {
     url = "me.com";
 }
 
-class ImageService {
+class ImageService extends BaseService {
     url = "image.me.com";
+}
+
+class BlobService extends BaseService {
+    url = "blob.me.com";
 }
 
 class Base {
@@ -24,4 +32,8 @@ class B extends A {
     foo = new ImageService();
 }
 
-new B();
+class C extends B {
+    foo = new BlobService();
+}
+
+new C();
