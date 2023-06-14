@@ -12,12 +12,10 @@
     "description": "",
     "dependencies": {
         "@babel/core": "^7.22.1",
-        "acorn": "^8.8.2",
-        "acorn-class-fields": "^1.0.0",
-        "dependency-tree": "^10.0.9",
         "estree-walker": "2.0.2"
     },
     "devDependencies": {
+        "@babel/preset-env": "^7.22.5",
         "@types/babel__core": "^7.20.1",
         "prettier": "^2.8.8",
         "ts-node": "^10.9.1"

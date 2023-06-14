@@ -1,141 +1,74 @@
-import fs from "fs";
-import path from "path";
-import dt from "dependency-tree";
-import { parseSync } from "@babel/core";
+import { transformSync, parseSync } from "@babel/core";
 import { walk } from "estree-walker";
+import fs from "fs";
 
-class Dependencies {
-    public dependencies: any[] = [];
-    public ident: string;
+const content = fs.readFileSync("demo/index.ts", "utf-8");
 
-    private _tree: any[];
-    private fileList: string[];
-    private opts: any;
+const constructorVisitor = {
+    ClassProperty(path, { classProps }) {
+        const { node } = path;
+        classProps[node.key.name] = node;
+    },
+};
 
-    public constructor(
-        ident: string,
-        entryFile: string,
-        opts: { countImports: boolean } = { countImports: false }
-    ) {
-        this.ident = ident;
-        this.fileList = dt.toList({
-            filename: entryFile,
-            directory: path.dirname(entryFile),
-        });
-        this.opts = opts;
-        this.getDependencies();
-    }
-
-    public get tree() {
-        if (this._tree) {
-            return this._tree;
-        } else {
-            return this.toTree(this.ident);
+const updatePropsVisitor = {
+    ClassProperty(path, { classProps }) {
+        const { node } = path;
+        if (Object.keys(classProps).includes(node.key.name)) {
+            path.replaceWith(classProps[node.key.name]);
         }
-    }
+    },
+};
 
-    private getDependencies() {
-        const dependantStack = [this.ident];
-
-        while (dependantStack.length) {
-            const currentIdent = dependantStack.pop();
-            this.traverseFileList(currentIdent, dependantStack);
+const superClassVisitor = {
+    Identifier(path, { superClassName, mergeNode }) {
+        const { node } = path;
+        if (node.name === superClassName) {
+            path.replaceWith(mergeNode);
         }
-        return this.dependencies;
-    }
+    },
+};
 
-    private noExistingDependency(ident: string, ancestor: any, fn: string) {
-        return this.dependencies.every(
-            (d) =>
-                (ancestor.type !== "Program" && d.name !== ancestor.id.name) ||
-                d.uses !== ident ||
-                d.file !== fn
-        );
-    }
+const classVisitor = {
+    ClassDeclaration(path, { name, superPath }) {
+        const { node } = path;
+        if (node.superClass?.name === name) {
+            const superNode = JSON.parse(JSON.stringify(superPath.node));
+            superNode.id.name = `${superNode.id.name}__$TRANSFORMED`;
+            const classProps = {};
+            path.traverse(constructorVisitor, { classProps });
+            superPath.node.id.name = `${superPath.node.id.name}_${node.id.name}_MERGE`;
+            superPath.traverse(updatePropsVisitor, { classProps });
+            const mergeNode = JSON.parse(JSON.stringify(superPath.node));
+            superPath.replaceWith(superNode);
+            superPath.insertBefore(mergeNode);
+            path.traverse(superClassVisitor, {
+                superClassName: node.superClass.name,
+                mergeNode: mergeNode.id,
+            });
+        }
+    },
+};
 
-    private walkFileAST(
-        ast: any,
-        currentIdent: string,
-        fn: string,
-        dependantStack: string[]
-    ) {
-        const stack = [];
-        walk(ast, {
-            enter: (node, parent) => {
-                if (node.type === "Identifier" && node.name === currentIdent) {
-                    let found = false;
-                    while (stack.length) {
-                        const { ancestor, ancestorParent } = stack.pop();
-                        if (ancestorParent.type === "Program") {
-                            if (
-                                found === false &&
-                                this.noExistingDependency(
-                                    currentIdent,
-                                    ancestorParent,
-                                    fn
-                                ) &&
-                                (this.opts.countImports ||
-                                    ancestor.type !== "ImportDeclaration")
-                            ) {
-                                this.dependencies.push({
-                                    name: null,
-                                    type: "Program",
-                                    file: fn,
-                                    uses: currentIdent,
-                                    dependencies: [],
-                                });
-                            }
-                            stack.length = 0;
-                        }
-                        if (
-                            (ancestor.type === "ClassDeclaration" ||
-                                ancestor.type === "FunctionDeclaration" ||
-                                ancestor.type === "VariableDeclarator") &&
-                            ancestor.id.name !== currentIdent
-                        ) {
-                            if (
-                                this.noExistingDependency(
-                                    currentIdent,
-                                    ancestor,
-                                    fn
-                                )
-                            ) {
-                                found = ancestor.id.name;
-                                this.dependencies.push({
-                                    name: ancestor.id.name,
-                                    type: ancestor.type,
-                                    file: fn,
-                                    uses: currentIdent,
-                                    dependencies: [],
-                                });
-                            }
-                            dependantStack.push(ancestor.id.name);
-                        }
-                    }
-                }
-                stack.push({ ancestor: node, ancestorParent: parent });
+function myCustomPlugin({ types: t }) {
+    return {
+        visitor: {
+            ClassDeclaration(path) {
+                const { node } = path;
+
+                path.parentPath.traverse(classVisitor, {
+                    name: node.id.name,
+                    superPath: path,
+                });
+
+                node.id.name = node.id.name.replace("__$TRANSFORMED", "");
             },
-        });
-    }
-
-    private traverseFileList(currentIdent: string, dependantStack: string[]) {
-        for (const fn of this.fileList) {
-            const content = fs.readFileSync(fn, "utf-8");
-            const ast = parseSync(content) as any;
-            this.walkFileAST(ast, currentIdent, fn, dependantStack);
-        }
-    }
-
-    private toTree(ident: string, tree: any = []) {
-        for (const d of this.dependencies) {
-            if (d.uses === ident) {
-                tree.push(d);
-                d.dependencies = this.toTree(d.name, d.chilren);
-            }
-        }
-        return tree;
-    }
+        },
+    };
 }
 
-const d = new Dependencies("MY_CONST", "demo/index.ts", { countImports: true });
-console.dir(d.tree, { depth: 5 });
+const output = transformSync(content, {
+    plugins: [myCustomPlugin],
+});
+
+fs.writeFileSync("./dist.js", output.code);
