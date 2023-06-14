@@ -11,8 +11,7 @@
     "license": "ISC",
     "description": "",
     "dependencies": {
-        "@babel/core": "^7.22.1",
-        "estree-walker": "2.0.2"
+        "@babel/core": "^7.22.1"
     },
     "devDependencies": {
         "@babel/preset-env": "^7.22.5",

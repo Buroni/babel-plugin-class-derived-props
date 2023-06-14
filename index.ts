@@ -1,5 +1,4 @@
-import { transformSync, parseSync } from "@babel/core";
-import { walk } from "estree-walker";
+import { transformSync } from "@babel/core";
 import fs from "fs";
 
 const content = fs.readFileSync("demo/index.ts", "utf-8");
