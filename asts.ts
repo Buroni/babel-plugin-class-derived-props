@@ -7,7 +7,7 @@ const callMemberExpression = (
 ): any =>
     t.expressionStatement(
         t.callExpression(
-            t.memberExpression(t.identifier(member), t.identifier(property)),
+            t.memberExpression(member, t.identifier(property)),
             args
         )
     );
@@ -40,15 +40,11 @@ export const buildClassAst = (path: any) => {
                             )
                         ),
                     ]),
-                    t.expressionStatement(
-                        callMemberExpression("__class", "initProps")
-                    ),
-                    t.expressionStatement(
-                        callMemberExpression(
-                            "__class",
-                            "ctor",
-                            constr ? [...constr.params] : []
-                        )
+                    callMemberExpression(t.identifier("__class"), "initProps"),
+                    callMemberExpression(
+                        t.identifier("__class"),
+                        "ctor",
+                        constr ? [...constr.params] : []
                     ),
                     t.returnStatement(t.identifier("__class")),
                 ])
