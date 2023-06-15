@@ -99,13 +99,14 @@ export const build__classAst = (path: any) => {
 
     const classProps = path
         .get("body")
-        .get("body")
+        .get("body")  // `body` array of a `ClassBody` node
         .filter((p) => t.isClassProperty(p))
         .map((p) => p.node);
 
     const superCtorCall = node.superClass
         ? callMemberExpression(t.super(), "ctor")
         : t.emptyStatement();
+
     const superInitCall = node.superClass
         ? callMemberExpression(t.super(), "initProps")
         : t.emptyStatement();
@@ -113,6 +114,8 @@ export const build__classAst = (path: any) => {
     const ctorBlock = t.blockStatement([superCtorCall]);
     const initBlock = t.blockStatement([superInitCall]);
 
+    // Push constructor class properties to `initProps()`,
+    // e.g. `foo = "bar"` in the class body becomes `this.foo = "bar"` in `initProps()`
     initBlock.body.push(
         ...classProps.map((p) =>
             t.expressionStatement(
@@ -125,6 +128,7 @@ export const build__classAst = (path: any) => {
         )
     );
 
+    // Push original class constructor properties (except `super`) to underscored class `ctor()`
     if (constr) {
         ctorBlock.body.push(
             ...constr.body.body.filter(
