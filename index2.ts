@@ -11,11 +11,13 @@ const build__classAst = (path: any) => {
     const { node } = path;
     const constr = node.body.body.find((n) => n.key?.name === "constructor");
 
+    console.log("BUILD AST");
+
     path.traverse(findClassPropsVisitor, { classProps });
 
     return t.classDeclaration(
         t.identifier(`__${node.id.name}`),
-        node.superClass ? { ...node.superClass } : null,
+        node.superClass ? t.identifier(`__${node.superClass.name}`) : null,
         t.classBody([
             t.classMethod(
                 "method",
@@ -44,11 +46,10 @@ const build__classAst = (path: any) => {
 };
 
 const findSubClassesVisitor = {
-    ClassDeclaration(path, { superName, subClasses }) {
+    ClassDeclaration(path, { superName, __classes }) {
         const { node } = path;
         if (node.superClass?.name === superName) {
-            console.log(`${superName} has subclass ${node.id.name}`);
-            subClasses[node.id.name] = node;
+            __classes[`__${node.id.name}`] = build__classAst(path);
         }
     },
 };
@@ -65,28 +66,24 @@ function myCustomPlugin({ types: t }) {
             ClassDeclaration(path) {
                 const { node } = path;
 
-                if (node.superClass) {
+                if (node.superClass || node.id.name.startsWith("__")) {
                     // We only want to deal with base classes in this visitor
                     return;
                 }
 
-                const subClasses = {};
                 const __classes = {
                     [`__${node.id.name}`]: build__classAst(path),
                 };
 
-                console.log(__classes);
-
-                // __classes[`__${node.id.name}`] = t.classDeclaration(`__${node.id.name}`, undefined, t.classBody())
-
                 path.parentPath.traverse(findSubClassesVisitor, {
                     superName: node.id.name,
-                    subClasses,
+                    __classes,
                 });
 
-                for (const subClassName in subClasses) {
-                    const subClass = subClasses[subClassName];
-                    // const c = t.classDeclaration(`__${subClassName}`, __classes[`__${node.id.name}`])
+                console.log(__classes);
+
+                for (const __className in __classes) {
+                    path.insertBefore(__classes[__className]);
                 }
             },
         },
@@ -96,3 +93,5 @@ function myCustomPlugin({ types: t }) {
 const output = transformSync(content, {
     plugins: [myCustomPlugin],
 });
+
+// fs.writeFileSync("./dist.js", output.code);
