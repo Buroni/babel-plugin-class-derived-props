@@ -1,5 +1,5 @@
 class A {
-    foo  = "bar";
+    foo = "bar";
 
     constructor() {
         console.log(this.foo);
@@ -11,7 +11,7 @@ function callB() {
         foo = "baz";
     }
 
-    const b = new B;
+    const b = new B();
 }
 
 callB();
