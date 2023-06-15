@@ -4,6 +4,8 @@ import fs from "fs";
 
 const content = fs.readFileSync("demo/index.ts", "utf-8");
 
+const seen = [];
+
 const findSubClassesVisitor = {
     ClassDeclaration(path, { superName, __classes }) {
         const { node } = path;
@@ -19,10 +21,10 @@ function myCustomPlugin({ types: t }) {
             ClassDeclaration(path) {
                 const { node } = path;
 
-                if (node.id.name.startsWith("__")) {
-                    return;
-                } else if (node.superClass) {
-                    path.replaceWith(buildClassAst(path));
+                if (
+                    node.id.name.startsWith("__") ||
+                    seen.includes(node.id.name)
+                ) {
                     return;
                 }
 
@@ -36,12 +38,15 @@ function myCustomPlugin({ types: t }) {
                 });
 
                 for (const __className in __classes) {
-                    path.insertBefore(__classes[__className]);
+                    if (!seen.includes(__className)) {
+                        path.insertBefore(__classes[__className]);
+                        seen.push(__className);
+                    }
                 }
 
-                console.log(__classes);
-
                 path.replaceWith(buildClassAst(path));
+
+                seen.push(node.id.name);
             },
         },
     };
