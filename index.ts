@@ -3,7 +3,7 @@ import fs from "fs";
 
 const content = fs.readFileSync("demo/index.ts", "utf-8");
 
-const constructorVisitor = {
+const collectClassPropsVisitor = {
     ClassProperty(path, { classProps }) {
         const { node } = path;
         classProps[node.key.name] = node;
@@ -44,7 +44,7 @@ const classVisitor = {
 
             const classProps = {};
             const updated = { v: false };
-            path.traverse(constructorVisitor, { classProps });
+            path.traverse(collectClassPropsVisitor, { classProps });
             superPath.traverse(updatePropsVisitor, { classProps, updated });
 
             if (!updated.v) {

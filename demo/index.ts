@@ -1,39 +1,90 @@
-class BaseService {
-    url;
-}
+// class Base {
+//     b = "base";
+//
+//     constructor() {
+//         console.log("base", this.b);
+//     }
+// }
+// class A extends Base {
+//     foo = "A"
+//
+//     constructor() {
+//         console.log(this.foo);
+//     }
+// }
+//
+// class B extends A {
+//     foo = "B"
+//     b = "B not base";
+//
+//     constructor() {
+//         console.log("from b");
+//     }
+// }
 
-class Service extends BaseService {
-    url = "me.com";
-}
+class _Base {
+    b;
 
-class ImageService extends BaseService {
-    url = "image.me.com";
-}
+    ctor() {
+        console.log("base:2", this.b);
+    }
 
-class BlobService extends BaseService {
-    url = "blob.me.com";
-}
-
-class Base {
-    b = "base";
-}
-
-class A extends Base {
-    foo = new Service();
-
-    constructor() {
-        super();
-        console.log(this.foo);
-        console.log(this.b);
+    initProps() {
+        this.b = "base";
     }
 }
 
-class B extends A {
-    foo = new ImageService();
+class _A extends _Base {
+    foo;
+
+    ctor() {
+        super.ctor();
+        console.log(this.foo);
+    }
+
+    initProps() {
+        this.foo = "A";
+    }
 }
 
-class C extends B {
-    foo = new BlobService();
+class _B extends _A {
+    ctor() {
+        super.ctor();
+        console.log("from b");
+    }
+
+    initProps() {
+        super.initProps();
+        this.foo = "B";
+        this.b = "B not base";
+    }
 }
 
-new C();
+class Base {
+    constructor() {
+        const _class = new _Base();
+        _class.initProps();
+        _class.ctor();
+        return _class;
+    }
+}
+
+class A {
+    constructor() {
+        const _class = new _A();
+        _class.initProps();
+        _class.ctor();
+        return _class;
+    }
+}
+
+class B {
+    constructor() {
+        const _class = new _B();
+        _class.initProps();
+        _class.ctor();
+        return _class;
+    }
+}
+
+new B();
