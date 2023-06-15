@@ -45,7 +45,7 @@ function myCustomPlugin() {
 
             BinaryExpression(path) {
                 /**
-                 * Set `o instanceof [obj-name]` to `o instanceof __[obj-name]` where applicable
+                 * Set `o instanceof [class-name]` to `o instanceof __[class-name]` where applicable
                  */
                 const {
                     node: { right, operator },
