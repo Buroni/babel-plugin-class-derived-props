@@ -2,7 +2,7 @@ import { transformSync, types as t } from "@babel/core";
 import { buildUnderscoredClassAST, buildClassAST } from "./asts";
 import fs from "fs";
 
-const content = fs.readFileSync("demo/service.ts", "utf-8");
+const content = fs.readFileSync("demo/nested.ts", "utf-8");
 
 // Array of transformed class names used for determining
 // whether to transform a `prototype` access or `instanceof` expression
