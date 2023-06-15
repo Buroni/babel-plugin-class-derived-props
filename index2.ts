@@ -10,9 +10,7 @@ const build__classAst = (path: any) => {
     const classProps = [];
     const { node } = path;
     const constr = node.body.body.find((n) => n.key?.name === "constructor");
-
-    console.log("BUILD AST");
-
+    
     path.traverse(findClassPropsVisitor, { classProps });
 
     return t.classDeclaration(
