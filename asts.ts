@@ -5,6 +5,9 @@ const callMemberExpression = (
     property: string,
     args: any[] = []
 ): any =>
+    /**
+     * Calling an object member, e.g. `this.initProps()`
+     */
     t.expressionStatement(
         t.callExpression(
             t.memberExpression(member, t.identifier(property)),
@@ -14,11 +17,28 @@ const callMemberExpression = (
 
 const findClassPropsVisitor = {
     ClassProperty(path, { classProps }) {
-        classProps.push(path.node); // TODO - destructure?
+        /**
+         * Builds a list of properties on a class
+         */
+        classProps.push(path.node);
     },
 };
 
 export const buildClassAst = (path: any) => {
+    /**
+     * Builds the class wrapper which returns `__[clas-name]` internally, e.g.
+     *
+     * ```
+     * class A {
+     *     constructor() {
+     *         __class = new __A;
+     *         __class.initProps();
+     *         __class.ctor();
+     *         return __class;
+     *     }
+     * }
+     * ```
+     */
     const { node } = path;
     const constr = node.body.body.find((n) => n.key?.name === "constructor");
 
@@ -54,6 +74,35 @@ export const buildClassAst = (path: any) => {
 };
 
 export const build__classAst = (path: any) => {
+    /**
+     * Builds the underscored class `__[class-name]` for each class, e.g.
+     *
+     * ```
+     * class A extends Base {
+     *     foo = "bar";
+     *
+     *     constructor() {
+     *         console.log(this.foo);
+     *     }
+     * }
+     * ```
+     *
+     * Becomes:
+     *
+     * ```
+     * class __A extends __Base {
+     *     ctor() {
+     *         super.ctor();
+     *         console.log(this.foo);
+     *     }
+     *
+     *     initProps() {
+     *         super.initProps();
+     *         this.foo = "bar";
+     *     }
+     * }
+     * ```
+     */
     const classProps = [];
     const { node } = path;
     const constr = node.body.body.find((n) => n.key?.name === "constructor");

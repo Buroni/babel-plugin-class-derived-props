@@ -1,4 +1,4 @@
-import { transformSync } from "@babel/core";
+import { parseSync, transformSync } from "@babel/core";
 import { build__classAst, buildClassAst } from "./asts";
 import fs from "fs";
 
@@ -19,6 +19,10 @@ function myCustomPlugin({ types: t }) {
     return {
         visitor: {
             ClassDeclaration(path) {
+                /**
+                 * Create equivalent `__[class-name]` class for each class in the program, and transform the
+                 * original class to a container which returns the underscored version
+                 */
                 const { node } = path;
 
                 if (
@@ -50,14 +54,33 @@ function myCustomPlugin({ types: t }) {
             },
 
             BinaryExpression(path) {
+                /**
+                 * Set `o instanceof [obj-name]` to `o instanceof __[obj-name]` where applicable
+                 */
                 const {
                     node: { right, operator },
                 } = path;
+                if (operator === "instanceof" && seen.includes(right.name)) {
+                    path.get("right").replaceWith(
+                        t.identifier(`__${right.name}`)
+                    );
+                }
+            },
 
-                const __rightName = `__${right.name}`;
-                if (operator === "instanceof") {
-                    right.name = __rightName;
-                    right.loc.identifierName = __rightName;
+            MemberExpression(path) {
+                /**
+                 * Set `[obj-name].prototype` to `__[obj-name].prototype` where applicable
+                 */
+                const { node } = path;
+                // If the object has an equivalent`__[obj-name]` and is accessing prototype,
+                // change the prototype's object from `[pbj-name]` to `__[obj-name]`
+                if (
+                    node.property.name === "prototype" &&
+                    seen.includes(node.object.name)
+                ) {
+                    path.get("object").replaceWith(
+                        t.identifier(`__${node.object.name}`)
+                    );
                 }
             },
         },
@@ -67,5 +90,9 @@ function myCustomPlugin({ types: t }) {
 const output = transformSync(content, {
     plugins: [myCustomPlugin],
 });
+
+const code = `A.prototype.hello = 1;`;
+
+console.dir(parseSync(code), { depth: null });
 
 fs.writeFileSync("./dist.js", output.code.replace(/__\$TRANSFORMED__/g, ""));
