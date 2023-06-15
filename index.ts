@@ -1,8 +1,8 @@
-import { transformSync, types as t } from "@babel/core";
+import { transformSync } from "@babel/core";
 import { build__classAst, buildClassAst } from "./asts";
 import fs from "fs";
 
-const content = fs.readFileSync("demo/index.ts", "utf-8");
+const content = fs.readFileSync("demo/simple.ts", "utf-8");
 
 const seen = [];
 
@@ -47,6 +47,18 @@ function myCustomPlugin({ types: t }) {
                 path.replaceWith(buildClassAst(path));
 
                 seen.push(node.id.name);
+            },
+
+            BinaryExpression(path) {
+                const {
+                    node: { right, operator },
+                } = path;
+
+                const __rightName = `__${right.name}`;
+                if (operator === "instanceof") {
+                    right.name = __rightName;
+                    right.loc.identifierName = __rightName;
+                }
             },
         },
     };
