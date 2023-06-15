@@ -1,31 +1,17 @@
 class BaseService {
-    url = "";
-
-    constructor() {}
+    url;
 }
 
 class Service extends BaseService {
     url = "me.com";
-
-    constructor() {
-        super();
-    }
 }
 
 class ImageService extends BaseService {
     url = "image.me.com";
-
-    constructor() {
-        super();
-    }
 }
 
 class BlobService extends BaseService {
     url = "blob.me.com";
-
-    constructor() {
-        super();
-    }
 }
 
 class Base {
@@ -47,19 +33,11 @@ class A extends Base {
 
 class B extends A {
     foo = new ImageService();
-
-    constructor() {
-        super();
-    }
 }
 
 class C extends B {
     b = "not base; C";
     foo = new BlobService();
-
-    constructor() {
-        super();
-    }
 }
 
 new C();

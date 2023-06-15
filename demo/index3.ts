@@ -1,18 +1,13 @@
 class A {
     x = "a";
 
-    constructor() {
-        console.log(this.x);
-    }
+    // constructor() {}
 }
 
 class B extends A {
     x = "b";
 
-    constructor() {
-        super();
-        console.log("this is B");
-    }
+    // constructor() {super()}
 }
 
 const b = new B();

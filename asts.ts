@@ -81,21 +81,22 @@ export const build__classAst = (path: any) => {
     const ctorBlock = t.blockStatement([superCtorCall]);
     const initBlock = t.blockStatement([superInitCall]);
 
+    initBlock.body.push(
+        ...classProps.map((p) =>
+            t.expressionStatement(
+                t.assignmentExpression(
+                    "=",
+                    t.memberExpression(t.thisExpression(), p.key),
+                    p.value === null ? t.nullLiteral() : p.value
+                )
+            )
+        )
+    );
+
     if (constr) {
         ctorBlock.body.push(
             ...constr.body.body.filter(
                 (b) => b.expression?.callee?.type !== "Super"
-            )
-        );
-        initBlock.body.push(
-            ...classProps.map((p) =>
-                t.expressionStatement(
-                    t.assignmentExpression(
-                        "=",
-                        t.memberExpression(t.thisExpression(), p.key),
-                        p.value
-                    )
-                )
             )
         );
     }
