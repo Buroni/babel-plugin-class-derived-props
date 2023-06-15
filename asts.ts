@@ -15,7 +15,7 @@ const callMemberExpression = (
         )
     );
 
-export const buildClassAst = (path: any) => {
+export const buildClassAST = (path: any) => {
     /**
      * Builds the class wrapper which returns `__[clas-name]` internally, e.g.
      *
@@ -34,6 +34,8 @@ export const buildClassAst = (path: any) => {
     const constr = node.body.body.find((n) => n.key?.name === "constructor");
 
     return t.classDeclaration(
+        // Prefix with `__$TRANSFORMED__` then remove later, as for some reason babel
+        // throws a "duplicate name" error when swapping a class with one of the same name
         t.identifier(`__$TRANSFORMED__${node.id.name}`),
         null,
         t.classBody([
@@ -64,7 +66,7 @@ export const buildClassAst = (path: any) => {
     );
 };
 
-export const build__classAst = (path: any) => {
+export const buildUnderscoredClassAST = (path: any) => {
     /**
      * Builds the underscored class `__[class-name]` for each class, e.g.
      *

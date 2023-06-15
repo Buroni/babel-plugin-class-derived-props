@@ -1,54 +1,37 @@
-import { parseSync, transformSync } from "@babel/core";
-import { build__classAst, buildClassAst } from "./asts";
+import { transformSync, types as t } from "@babel/core";
+import { buildUnderscoredClassAST, buildClassAST } from "./asts";
 import fs from "fs";
 
-const content = fs.readFileSync("demo/arguments.ts", "utf-8");
+const content = fs.readFileSync("demo/service.ts", "utf-8");
 
+// Array of transformed class names used for determining
+// whether to transform a `prototype` access or `instanceof` expression
 const seen = [];
 
-const findSubClassesVisitor = {
-    ClassDeclaration(path, { superName, __classes }) {
-        const { node } = path;
-        if (node.superClass?.name === superName) {
-            __classes[`__${node.id.name}`] = build__classAst(path);
-        }
-    },
-};
-
-function myCustomPlugin({ types: t }) {
+function myCustomPlugin() {
     return {
         visitor: {
             ClassDeclaration(path) {
                 /**
-                 * Create equivalent `__[class-name]` class for each class in the program, and transform the
+                 * Create equivalent `__[class-name]` (underscored) class for each class in the program, and transform the
                  * original class to a container which returns the underscored version
                  */
                 const { node } = path;
 
-                if (
-                    node.id.name.startsWith("__") ||
-                    seen.includes(node.id.name)
-                ) {
+                if (node.id.name.startsWith("__")) {
                     return;
                 }
 
-                const __classes = {
-                    [`__${node.id.name}`]: build__classAst(path),
-                };
+                const underscoredClassName = `__${node.id.name}`;
 
-                path.parentPath.traverse(findSubClassesVisitor, {
-                    superName: node.id.name,
-                    __classes,
-                });
-
-                for (const __className in __classes) {
-                    if (!seen.includes(__className)) {
-                        path.insertBefore(__classes[__className]);
-                        seen.push(__className);
-                    }
+                if (!seen.includes(underscoredClassName)) {
+                    // Insert the underscored class before original class
+                    path.insertBefore(buildUnderscoredClassAST(path));
+                    seen.push(underscoredClassName);
                 }
 
-                path.replaceWith(buildClassAst(path));
+                // Replace original class with wrapper that returns underscored class
+                path.replaceWith(buildClassAST(path));
 
                 seen.push(node.id.name);
             },
@@ -91,4 +74,5 @@ const output = transformSync(content, {
     plugins: [myCustomPlugin],
 });
 
+// TODO - less naive way of removing `__$TRANSFORMED__` class prefix
 fs.writeFileSync("./dist.js", output.code.replace(/__\$TRANSFORMED__/g, ""));
