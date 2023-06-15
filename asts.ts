@@ -1,5 +1,17 @@
 import { types as t } from "@babel/core";
 
+const callMemberExpression = (
+    member: any,
+    property: string,
+    args: any[] = []
+): any =>
+    t.expressionStatement(
+        t.callExpression(
+            t.memberExpression(t.identifier(member), t.identifier(property)),
+            args
+        )
+    );
+
 const findClassPropsVisitor = {
     ClassProperty(path, { classProps }) {
         classProps.push(path.node); // TODO - destructure?
@@ -29,20 +41,12 @@ export const buildClassAst = (path: any) => {
                         ),
                     ]),
                     t.expressionStatement(
-                        t.callExpression(
-                            t.memberExpression(
-                                t.identifier("__class"),
-                                t.identifier("initProps")
-                            ),
-                            []
-                        )
+                        callMemberExpression("__class", "initProps")
                     ),
                     t.expressionStatement(
-                        t.callExpression(
-                            t.memberExpression(
-                                t.identifier("__class"),
-                                t.identifier("ctor")
-                            ),
+                        callMemberExpression(
+                            "__class",
+                            "ctor",
                             constr ? [...constr.params] : []
                         )
                     ),
@@ -61,21 +65,10 @@ export const build__classAst = (path: any) => {
     path.traverse(findClassPropsVisitor, { classProps });
 
     const superCtorCall = node.superClass
-        ? t.expressionStatement(
-              t.callExpression(
-                  t.memberExpression(t.super(), t.identifier("ctor")),
-                  []
-              )
-          )
+        ? callMemberExpression(t.super(), "ctor")
         : t.emptyStatement();
-
     const superInitCall = node.superClass
-        ? t.expressionStatement(
-              t.callExpression(
-                  t.memberExpression(t.super(), t.identifier("initProps")),
-                  []
-              )
-          )
+        ? callMemberExpression(t.super(), "initProps")
         : t.emptyStatement();
 
     const ctorBlock = t.blockStatement([superCtorCall]);
