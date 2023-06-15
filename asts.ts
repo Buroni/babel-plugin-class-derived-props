@@ -99,7 +99,7 @@ export const build__classAst = (path: any) => {
 
     const classProps = path
         .get("body")
-        .get("body")  // `body` array of a `ClassBody` node
+        .get("body") // `body` array of a `ClassBody` node
         .filter((p) => t.isClassProperty(p))
         .map((p) => p.node);
 

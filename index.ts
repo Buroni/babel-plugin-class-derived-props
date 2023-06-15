@@ -2,7 +2,7 @@ import { parseSync, transformSync } from "@babel/core";
 import { build__classAst, buildClassAst } from "./asts";
 import fs from "fs";
 
-const content = fs.readFileSync("demo/service.ts", "utf-8");
+const content = fs.readFileSync("demo/arguments.ts", "utf-8");
 
 const seen = [];
 
