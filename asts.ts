@@ -15,15 +15,6 @@ const callMemberExpression = (
         )
     );
 
-const findClassPropsVisitor = {
-    ClassProperty(path, { classProps }) {
-        /**
-         * Builds a list of properties on a class
-         */
-        classProps.push(path.node);
-    },
-};
-
 export const buildClassAst = (path: any) => {
     /**
      * Builds the class wrapper which returns `__[clas-name]` internally, e.g.
@@ -103,11 +94,14 @@ export const build__classAst = (path: any) => {
      * }
      * ```
      */
-    const classProps = [];
     const { node } = path;
     const constr = node.body.body.find((n) => n.key?.name === "constructor");
 
-    path.traverse(findClassPropsVisitor, { classProps });
+    const classProps = path
+        .get("body")
+        .get("body")
+        .filter((p) => t.isClassProperty(p))
+        .map((p) => p.node);
 
     const superCtorCall = node.superClass
         ? callMemberExpression(t.super(), "ctor")

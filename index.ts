@@ -2,7 +2,7 @@ import { parseSync, transformSync } from "@babel/core";
 import { build__classAst, buildClassAst } from "./asts";
 import fs from "fs";
 
-const content = fs.readFileSync("demo/simple.ts", "utf-8");
+const content = fs.readFileSync("demo/service.ts", "utf-8");
 
 const seen = [];
 
@@ -90,9 +90,5 @@ function myCustomPlugin({ types: t }) {
 const output = transformSync(content, {
     plugins: [myCustomPlugin],
 });
-
-const code = `A.prototype.hello = 1;`;
-
-console.dir(parseSync(code), { depth: null });
 
 fs.writeFileSync("./dist.js", output.code.replace(/__\$TRANSFORMED__/g, ""));
