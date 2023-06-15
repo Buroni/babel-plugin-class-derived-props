@@ -15,4 +15,6 @@ class B extends A {
     }
 }
 
-new B();
+const b = new B();
+
+console.log(b instanceof A);
