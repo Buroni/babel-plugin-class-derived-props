@@ -82,6 +82,9 @@ function myCustomPlugin() {
 
 const output = transformSync(content, {
     plugins: [myCustomPlugin],
+    ast: true,
 });
 
-fs.writeFileSync("./dist.js", output.code.replace(/__\$TRANSFORMED/g, ""));
+console.log(generate(output.ast).code);
+
+// fs.writeFileSync("./dist.js", output.code.replace(/__\$TRANSFORMED/g, ""));

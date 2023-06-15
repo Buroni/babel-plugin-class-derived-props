@@ -1,17 +1,79 @@
-import { transformSync, parseSync, types as t } from "@babel/core";
-import generate from "@babel/generator";
+import { transformSync, types as t } from "@babel/core";
 import fs from "fs";
 
 const content = fs.readFileSync("demo/index3.ts", "utf-8");
 
-const codeToAst = (code: string) => ({ ...parseSync(code).program.body[0] });
+const buildClassAst = (path: any) => {
+    const { node } = path;
+    const constr = node.body.body.find((n) => n.key?.name === "constructor");
+
+    return t.classDeclaration(
+        t.identifier(`__$TRANSFORMED__${node.id.name}`),
+        null,
+        t.classBody([
+            t.classMethod(
+                "constructor",
+                t.identifier("constructor"),
+                [...constr.params],
+                t.blockStatement([
+                    t.variableDeclaration("var", [
+                        t.variableDeclarator(
+                            t.identifier("__class"),
+                            t.newExpression(
+                                t.identifier(`__${node.id.name}`),
+                                []
+                            )
+                        ),
+                    ]),
+                    t.expressionStatement(
+                        t.callExpression(
+                            t.memberExpression(
+                                t.identifier("__class"),
+                                t.identifier("initProps")
+                            ),
+                            []
+                        )
+                    ),
+                    t.expressionStatement(
+                        t.callExpression(
+                            t.memberExpression(
+                                t.identifier("__class"),
+                                t.identifier("ctor")
+                            ),
+                            [...constr.params]
+                        )
+                    ),
+                    t.returnStatement(t.identifier("__class")),
+                ])
+            ),
+        ])
+    );
+};
 
 const build__classAst = (path: any) => {
     const classProps = [];
     const { node } = path;
     const constr = node.body.body.find((n) => n.key?.name === "constructor");
-    
+
     path.traverse(findClassPropsVisitor, { classProps });
+
+    const superCtorCall = node.superClass
+        ? t.expressionStatement(
+              t.callExpression(
+                  t.memberExpression(t.super(), t.identifier("ctor")),
+                  []
+              )
+          )
+        : t.emptyStatement();
+
+    const superInitCall = node.superClass
+        ? t.expressionStatement(
+              t.callExpression(
+                  t.memberExpression(t.super(), t.identifier("initProps")),
+                  []
+              )
+          )
+        : t.emptyStatement();
 
     return t.classDeclaration(
         t.identifier(`__${node.id.name}`),
@@ -21,13 +83,19 @@ const build__classAst = (path: any) => {
                 "method",
                 t.identifier("ctor"),
                 [...constr.params],
-                t.blockStatement([...constr.body.body])
+                t.blockStatement([
+                    superCtorCall,
+                    ...constr.body.body.filter(
+                        (b) => b.expression?.callee?.type !== "Super"
+                    ),
+                ])
             ),
             t.classMethod(
                 "method",
                 t.identifier("initProps"),
                 [],
                 t.blockStatement([
+                    superInitCall,
                     ...classProps.map((p) =>
                         t.expressionStatement(
                             t.assignmentExpression(
@@ -64,8 +132,10 @@ function myCustomPlugin({ types: t }) {
             ClassDeclaration(path) {
                 const { node } = path;
 
-                if (node.superClass || node.id.name.startsWith("__")) {
-                    // We only want to deal with base classes in this visitor
+                if (node.id.name.startsWith("__")) {
+                    return;
+                } else if (node.superClass) {
+                    path.replaceWith(buildClassAst(path));
                     return;
                 }
 
@@ -78,11 +148,11 @@ function myCustomPlugin({ types: t }) {
                     __classes,
                 });
 
-                console.log(__classes);
-
                 for (const __className in __classes) {
                     path.insertBefore(__classes[__className]);
                 }
+
+                path.replaceWith(buildClassAst(path));
             },
         },
     };
@@ -90,6 +160,7 @@ function myCustomPlugin({ types: t }) {
 
 const output = transformSync(content, {
     plugins: [myCustomPlugin],
+    ast: true,
 });
 
-// fs.writeFileSync("./dist.js", output.code);
+fs.writeFileSync("./dist.js", output.code.replace(/__\$TRANSFORMED__/g, ""));
