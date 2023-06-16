@@ -17,6 +17,7 @@ class Base {
 
     constructor(x) {
         this.x = `${x} ${this.message}`;
+        this._service = this.service;
     }
 }
 
