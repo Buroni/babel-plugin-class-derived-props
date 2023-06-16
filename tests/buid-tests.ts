@@ -1,4 +1,4 @@
-import { transformSync } from "@babel/core";
+import { transform } from "@babel/core";
 import plugin from "../src/index";
 import fs from "fs";
 import path from "path";
@@ -18,17 +18,17 @@ const ls = async (path_: string) => {
 (async () => {
     const testFiles = await ls(path.resolve(__dirname, "testfiles"));
 
-    fs.rmSync(DIST_PATH, { force: true, recursive: true });
-    fs.mkdirSync(DIST_PATH);
+    await fs.promises.rm(DIST_PATH, { force: true, recursive: true });
+    await fs.promises.mkdir(DIST_PATH);
 
     for (const f of testFiles) {
-        const content = fs.readFileSync(f, "utf-8");
+        const content = await fs.promises.readFile(f, "utf-8");
 
-        const output = transformSync(content, {
+        const output = await transform(content, {
             plugins: [plugin],
         });
 
-        fs.writeFileSync(
+        await fs.promises.writeFile(
             path.resolve(DIST_PATH, `${path.parse(f).name}.js`),
             output.code
         );
