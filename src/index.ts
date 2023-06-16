@@ -31,6 +31,9 @@ export default function () {
 
                 // Replace original class with wrapper that returns underscored class
                 path.replaceWith(buildClassAST(path));
+
+                // Remove `__$TRANSFORMED__"` prefix from swapped class.
+                // Gets around babel complaining about swapping classes with same name
                 path.node.id.name = path.node.id.name.replace(
                     "__$TRANSFORMED__",
                     ""

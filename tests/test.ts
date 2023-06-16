@@ -2,6 +2,7 @@ const { b } = require("./dist/simple");
 const { BFactory } = require("./dist/nested");
 const { jpg } = require("./dist/service");
 const { isInstanceOf, prototypeMethod, TEST_MSG } = require("./dist/prototype");
+const { c } = require("./dist/multiple-inheritance-getter");
 
 test("Property defined in base class should have derived value in same scope", () => {
     expect(b.y).toBe("b");
@@ -26,4 +27,16 @@ test("`instanceof` should be patched", () => {
 
 test("Prototype should be patched", () => {
     expect(prototypeMethod()).toBe(TEST_MSG);
+});
+
+test("Getters should inherit as normal", () => {
+    expect(c.g).toBe("getter value overwritten");
+});
+
+test("Argument passed into subclass constructor should be reflected in base class as normal", () => {
+    expect(c.a).toBe("from C4");
+});
+
+test("Base class method should be reflected in sub class as normal", () => {
+    expect(c.baseMethod()).toBe("base method");
 });

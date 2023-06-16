@@ -104,16 +104,26 @@ export const buildUnderscoredClassAST = (path: any) => {
     const { node } = path;
     const constr = node.body.body.find((n) => n.key?.name === "constructor");
 
-    const classProps = path
-        .get("body")
-        .get("body") // `body` array of a `ClassBody` node
+    // `body` array of a `ClassBody` node
+    const classBody = path.get("body").get("body");
+
+    const classProps = classBody
         .filter((p) => t.isClassProperty(p))
         .map((p) => p.node);
 
+    // Other class methods/getters which aren't properties should be copied across to underscored class
+    const remainingBody = classBody
+        .filter((p) => !t.isClassProperty(p))
+        .map((p) => p.node);
+
     const superCtorCall = node.superClass
-        ? callMemberExpression(t.super(), "ctor", [
-              t.spreadElement(t.identifier("args")),
-          ])
+        ? callMemberExpression(
+              t.super(),
+              "ctor",
+              constr
+                  ? [...constr.params]
+                  : [t.spreadElement(t.identifier("args"))]
+          )
         : t.emptyStatement();
 
     const superInitCall = node.superClass
@@ -150,6 +160,7 @@ export const buildUnderscoredClassAST = (path: any) => {
         t.identifier(`__${node.id.name}`),
         node.superClass ? t.identifier(`__${node.superClass.name}`) : null,
         t.classBody([
+            ...remainingBody,
             t.classMethod(
                 "method",
                 t.identifier("ctor"),
