@@ -42,7 +42,9 @@ export const buildClassAST = (path: any) => {
             t.classMethod(
                 "constructor",
                 t.identifier("constructor"),
-                constr ? [...constr.params] : [],
+                constr
+                    ? [...constr.params]
+                    : [t.restElement(t.identifier("args"))],
                 t.blockStatement([
                     t.variableDeclaration("var", [
                         t.variableDeclarator(
@@ -57,7 +59,10 @@ export const buildClassAST = (path: any) => {
                     callMemberExpression(
                         t.identifier("__class"),
                         "ctor",
-                        constr ? [...constr.params] : []
+                        // Spread constructor args up to parent ctor if no explicit params
+                        constr
+                            ? [...constr.params]
+                            : [t.spreadElement(t.identifier("args"))]
                     ),
                     t.returnStatement(t.identifier("__class")),
                 ])
@@ -106,7 +111,9 @@ export const buildUnderscoredClassAST = (path: any) => {
         .map((p) => p.node);
 
     const superCtorCall = node.superClass
-        ? callMemberExpression(t.super(), "ctor")
+        ? callMemberExpression(t.super(), "ctor", [
+              t.spreadElement(t.identifier("args")),
+          ])
         : t.emptyStatement();
 
     const superInitCall = node.superClass
@@ -146,7 +153,9 @@ export const buildUnderscoredClassAST = (path: any) => {
             t.classMethod(
                 "method",
                 t.identifier("ctor"),
-                constr ? [...constr.params] : [],
+                constr
+                    ? [...constr.params]
+                    : [t.restElement(t.identifier("args"))],
                 ctorBlock
             ),
             t.classMethod("method", t.identifier("initProps"), [], initBlock),

@@ -3,7 +3,8 @@
     "version": "1.0.0",
     "main": "index.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
+        "build:tests": "ts-node tests/buid-tests.ts",
+        "test": "npm run build:tests && jest",
         "lint": "prettier --write ."
     },
     "keywords": [],
@@ -11,12 +12,13 @@
     "license": "ISC",
     "description": "",
     "dependencies": {
-        "@babel/core": "^7.22.1"
-    },
-    "devDependencies": {
+        "@babel/core": "^7.22.1",
         "@babel/generator": "^7.22.5",
         "@babel/preset-env": "^7.22.5",
-        "@types/babel__core": "^7.20.1",
+        "@types/babel__core": "^7.20.1"
+    },
+    "devDependencies": {
+        "jest": "^29.5.0",
         "prettier": "^2.8.8",
         "ts-node": "^10.9.1"
     }

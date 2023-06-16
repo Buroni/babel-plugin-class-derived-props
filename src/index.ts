@@ -1,14 +1,10 @@
-import { transformSync, types as t } from "@babel/core";
+import { types as t } from "@babel/core";
 import { buildUnderscoredClassAST, buildClassAST } from "./ast-utils";
-import fs from "fs";
 
-const content = fs.readFileSync("demo/nested.ts", "utf-8");
+export default function () {
+    // Classes already visited
+    const seen = [];
 
-// Array of transformed class names used for determining
-// whether to transform a `prototype` access or `instanceof` expression
-const seen = [];
-
-function myCustomPlugin() {
     return {
         visitor: {
             ClassDeclaration(path) {
@@ -76,9 +72,3 @@ function myCustomPlugin() {
         },
     };
 }
-
-const output = transformSync(content, {
-    plugins: [myCustomPlugin],
-});
-
-fs.writeFileSync("./dist.js", output.code);
