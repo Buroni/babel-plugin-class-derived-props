@@ -15,6 +15,68 @@ const callMemberExpression = (
         )
     );
 
+const ctorBlock = (constr: any, node: any) => {
+    const superCtorCall = (constr: any) =>
+        callMemberExpression(
+            t.super(),
+            "ctor",
+            constr
+                ? [...constr.params]
+                : [t.spreadElement(t.identifier("args"))]
+        );
+
+    const ctorBlock = t.blockStatement([
+        node.superClass ? superCtorCall(constr) : t.emptyStatement(),
+    ]);
+
+    // Push original class constructor properties (except `super`) to underscored class `ctor()`
+    if (constr) {
+        ctorBlock.body.push(
+            ...constr.body.body.filter(
+                (b) => b.expression?.callee?.type !== "Super"
+            )
+        );
+    }
+
+    return ctorBlock;
+};
+
+const initBlock = (node, classBody) => {
+    const superInitCall = node.superClass
+        ? callMemberExpression(t.super(), "initProps")
+        : t.emptyStatement();
+
+    const classProps = classBody
+        .filter((p) => t.isClassProperty(p))
+        .map((p) => p.node);
+
+    const initBlock = t.blockStatement([superInitCall]);
+
+    // Push constructor class properties to `initProps()`,
+    // e.g. `foo = "bar"` in the class body becomes `this.foo = "bar"` in `initProps()`
+    initBlock.body.push(
+        ...classProps.map((p) =>
+            t.expressionStatement(
+                t.assignmentExpression(
+                    "=",
+                    t.memberExpression(t.thisExpression(), p.key),
+                    p.value === null ? t.nullLiteral() : p.value
+                )
+            )
+        )
+    );
+
+    return initBlock;
+};
+
+const ctorMethod = (constr: any, node: any) =>
+    t.classMethod(
+        "method",
+        t.identifier("ctor"),
+        constr ? [...constr.params] : [t.restElement(t.identifier("args"))],
+        ctorBlock(constr, node)
+    );
+
 export const buildClassAST = (path: any) => {
     /**
      * Builds the class wrapper which returns `__[clas-name]` internally, e.g.
@@ -107,69 +169,23 @@ export const buildUnderscoredClassAST = (path: any) => {
     // `body` array of a `ClassBody` node
     const classBody = path.get("body").get("body");
 
-    const classProps = classBody
-        .filter((p) => t.isClassProperty(p))
-        .map((p) => p.node);
-
     // Other class methods/getters which aren't properties should be copied across to underscored class
     const remainingBody = classBody
         .filter((p) => !t.isClassProperty(p))
         .map((p) => p.node);
-
-    const superCtorCall = node.superClass
-        ? callMemberExpression(
-              t.super(),
-              "ctor",
-              constr
-                  ? [...constr.params]
-                  : [t.spreadElement(t.identifier("args"))]
-          )
-        : t.emptyStatement();
-
-    const superInitCall = node.superClass
-        ? callMemberExpression(t.super(), "initProps")
-        : t.emptyStatement();
-
-    const ctorBlock = t.blockStatement([superCtorCall]);
-    const initBlock = t.blockStatement([superInitCall]);
-
-    // Push constructor class properties to `initProps()`,
-    // e.g. `foo = "bar"` in the class body becomes `this.foo = "bar"` in `initProps()`
-    initBlock.body.push(
-        ...classProps.map((p) =>
-            t.expressionStatement(
-                t.assignmentExpression(
-                    "=",
-                    t.memberExpression(t.thisExpression(), p.key),
-                    p.value === null ? t.nullLiteral() : p.value
-                )
-            )
-        )
-    );
-
-    // Push original class constructor properties (except `super`) to underscored class `ctor()`
-    if (constr) {
-        ctorBlock.body.push(
-            ...constr.body.body.filter(
-                (b) => b.expression?.callee?.type !== "Super"
-            )
-        );
-    }
 
     return t.classDeclaration(
         t.identifier(`__${node.id.name}`),
         node.superClass ? t.identifier(`__${node.superClass.name}`) : null,
         t.classBody([
             ...remainingBody,
+            ctorMethod(constr, node),
             t.classMethod(
                 "method",
-                t.identifier("ctor"),
-                constr
-                    ? [...constr.params]
-                    : [t.restElement(t.identifier("args"))],
-                ctorBlock
+                t.identifier("initProps"),
+                [],
+                initBlock(node, classBody)
             ),
-            t.classMethod("method", t.identifier("initProps"), [], initBlock),
         ])
     );
 };
