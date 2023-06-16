@@ -17,6 +17,10 @@ const ls = async (path_: string) => {
 
 (async () => {
     const testFiles = await ls(path.resolve(__dirname, "testfiles"));
+
+    fs.rmSync(DIST_PATH, { force: true, recursive: true });
+    fs.mkdirSync(DIST_PATH);
+
     for (const f of testFiles) {
         const content = fs.readFileSync(f, "utf-8");
 
@@ -24,21 +28,9 @@ const ls = async (path_: string) => {
             plugins: [plugin],
         });
 
-        if (!fs.existsSync(DIST_PATH)) {
-            fs.mkdirSync(DIST_PATH);
-        }
-
         fs.writeFileSync(
             path.resolve(DIST_PATH, `${path.parse(f).name}.js`),
             output.code
         );
     }
 })();
-
-// const content = fs.readFileSync("demo/nested.ts", "utf-8");
-//
-// const output = transformSync(content, {
-//     plugins: [plugin],
-// });
-//
-// fs.writeFileSync("./dist.js", output.code);
