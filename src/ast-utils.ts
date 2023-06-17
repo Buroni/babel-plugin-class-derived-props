@@ -1,10 +1,10 @@
-import { types as t } from "@babel/core";
+import { types as t, NodePath } from "@babel/core";
 
 const callMemberExpression = (
-    member: any,
+    member: t.Expression,
     property: string,
-    args: any[] = []
-): any =>
+    args: t.CallExpression["arguments"] = []
+): t.ExpressionStatement =>
     /**
      * Calling an object member, e.g. `this.initProps()`
      */
@@ -15,7 +15,10 @@ const callMemberExpression = (
         )
     );
 
-const ctorBlock = (constr: any, node: any) => {
+const ctorBlock = (
+    constr: t.ClassMethod,
+    node: t.ClassDeclaration
+): t.BlockStatement => {
     /**
      * Builds block body inside `ctor(<params>)` methods
      */
@@ -38,8 +41,9 @@ const ctorBlock = (constr: any, node: any) => {
     // Push original class constructor properties (except `super`) to underscored class `ctor()`
     if (constr) {
         ctorBlock.body.push(
-            ...constr.body.body.filter(
-                (b) => b.expression?.callee?.type !== "Super"
+            ...(constr.body.body as t.ExpressionStatement[]).filter(
+                (b) =>
+                    (b.expression as t.CallExpression)?.callee?.type !== "Super"
             )
         );
     }
@@ -47,17 +51,17 @@ const ctorBlock = (constr: any, node: any) => {
     return ctorBlock;
 };
 
-const initBlock = (node, classBody) => {
+const initBlock = (
+    node: t.ClassDeclaration,
+    classProps: t.ClassProperty[]
+): t.BlockStatement => {
     /**
      * Builds block body inside `initProps()` method
      */
+
     const superInitCall = node.superClass
         ? callMemberExpression(t.super(), "initProps")
         : t.emptyStatement();
-
-    const classProps = classBody
-        .filter((p) => t.isClassProperty(p))
-        .map((p) => p.node);
 
     const initBlock = t.blockStatement([superInitCall]);
 
@@ -78,7 +82,10 @@ const initBlock = (node, classBody) => {
     return initBlock;
 };
 
-const ctorMethod = (constr: any, node: any) =>
+const ctorMethod = (
+    constr: t.ClassMethod,
+    node: t.ClassDeclaration
+): t.ClassMethod =>
     /**
      * Builds whole `ctor(<params>)` method
      */
@@ -89,7 +96,9 @@ const ctorMethod = (constr: any, node: any) =>
         ctorBlock(constr, node)
     );
 
-export const buildClassAST = (path: any) => {
+export const buildClassAST = (
+    path: NodePath<t.ClassDeclaration>
+): t.ClassDeclaration => {
     /**
      * Builds the class wrapper which returns `__[clas-name]` internally, e.g.
      *
@@ -105,7 +114,12 @@ export const buildClassAST = (path: any) => {
      * ```
      */
     const { node } = path;
-    const constr = node.body.body.find((n) => n.key?.name === "constructor");
+    const constr = node.body.body.find(
+        (n) =>
+            t.isClassMethod(n) &&
+            t.isIdentifier(n.key) &&
+            n.key.name === "constructor"
+    ) as t.ClassMethod;
 
     return t.classDeclaration(
         // Prefix with `__$TRANSFORMED__` then remove later, as for some reason babel
@@ -117,7 +131,9 @@ export const buildClassAST = (path: any) => {
                 "constructor",
                 t.identifier("constructor"),
                 constr
-                    ? [...constr.params]
+                    ? // TODO - Make all `ClassMethod["params"]` assignable to `CallExpression["arguments"]`
+                      // i.e. assign `RestElement` to `SpreadElement` and `param = <defaultParam>` to `param || defaultParam`
+                      ([...constr.params] as t.Identifier[])
                     : [t.restElement(t.identifier("args"))],
                 t.blockStatement([
                     t.variableDeclaration("var", [
@@ -135,7 +151,7 @@ export const buildClassAST = (path: any) => {
                         "ctor",
                         // Spread constructor args up to parent ctor if no explicit params
                         constr
-                            ? [...constr.params]
+                            ? ([...constr.params] as t.Identifier[])
                             : [t.spreadElement(t.identifier("args"))]
                     ),
                     t.returnStatement(t.identifier("__class")),
@@ -145,7 +161,9 @@ export const buildClassAST = (path: any) => {
     );
 };
 
-export const buildUnderscoredClassAST = (path: any) => {
+export const buildUnderscoredClassAST = (
+    path: NodePath<t.ClassDeclaration>
+): t.ClassDeclaration => {
     /**
      * Builds the underscored class `__<class-name>` for each class, e.g.
      *
@@ -176,19 +194,40 @@ export const buildUnderscoredClassAST = (path: any) => {
      * ```
      */
     const { node } = path;
-    const constr = node.body.body.find((n) => n.key?.name === "constructor");
+    const constr = node.body.body.find(
+        (n) =>
+            t.isClassMethod(n) &&
+            t.isIdentifier(n.key) &&
+            n.key.name === "constructor"
+    ) as t.ClassMethod;
 
     // `body` array of a `ClassBody` node
     const classBody = path.get("body").get("body");
 
-    // Other class methods/getters which aren't properties should be copied across to underscored class
+    const classProps = classBody
+        .map((p) => p.node)
+        .filter((n) => t.isClassProperty(n)) as t.ClassProperty[];
+
+    // Other (non-constructor) class methods/getters which aren't properties should be copied across to underscored class
     const remainingBody = classBody
-        .filter((p) => !t.isClassProperty(p))
-        .map((p) => p.node);
+        .map((p) => p.node)
+        // TODO -- move into `isConstructor` helper
+        .filter(
+            (n) =>
+                !t.isClassProperty(n) &&
+                !(
+                    t.isClassMethod(n) &&
+                    t.isIdentifier(n.key) &&
+                    n.key.name === "constructor"
+                )
+        );
 
     return t.classDeclaration(
         t.identifier(`__${node.id.name}`),
-        node.superClass ? t.identifier(`__${node.superClass.name}`) : null,
+        // superClass is typed as `Expression` but seems only ever parsed as `Identifier`
+        node.superClass
+            ? t.identifier(`__${(node.superClass as t.Identifier).name}`)
+            : null,
         t.classBody([
             ...remainingBody,
             ctorMethod(constr, node),
@@ -196,7 +235,7 @@ export const buildUnderscoredClassAST = (path: any) => {
                 "method",
                 t.identifier("initProps"),
                 [],
-                initBlock(node, classBody)
+                initBlock(node, classProps)
             ),
         ])
     );
