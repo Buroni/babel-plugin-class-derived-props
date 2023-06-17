@@ -16,7 +16,13 @@ const callMemberExpression = (
     );
 
 const ctorBlock = (constr: any, node: any) => {
+    /**
+     * Builds block body inside `ctor(<params>)` methods
+     */
     const superCtorCall = (constr: any) =>
+        /**
+         * Builds `ctor.super(<params>)`
+         */
         callMemberExpression(
             t.super(),
             "ctor",
@@ -42,6 +48,9 @@ const ctorBlock = (constr: any, node: any) => {
 };
 
 const initBlock = (node, classBody) => {
+    /**
+     * Builds block body inside `initProps()` method
+     */
     const superInitCall = node.superClass
         ? callMemberExpression(t.super(), "initProps")
         : t.emptyStatement();
@@ -70,6 +79,9 @@ const initBlock = (node, classBody) => {
 };
 
 const ctorMethod = (constr: any, node: any) =>
+    /**
+     * Builds whole `ctor(<params>)` method
+     */
     t.classMethod(
         "method",
         t.identifier("ctor"),
@@ -135,7 +147,7 @@ export const buildClassAST = (path: any) => {
 
 export const buildUnderscoredClassAST = (path: any) => {
     /**
-     * Builds the underscored class `__[class-name]` for each class, e.g.
+     * Builds the underscored class `__<class-name>` for each class, e.g.
      *
      * ```
      * class A extends Base {

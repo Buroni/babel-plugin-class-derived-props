@@ -9,7 +9,7 @@ export default function () {
         visitor: {
             ClassDeclaration(path) {
                 /**
-                 * Create equivalent `__[class-name]` (underscored) class for each class in the program, and transform the
+                 * Create equivalent `__<class-name>` (underscored) class for each class in the program, and transform the
                  * original class to a container which returns the underscored version
                  */
                 const { node } = path;
@@ -44,7 +44,7 @@ export default function () {
 
             BinaryExpression(path) {
                 /**
-                 * Set `o instanceof [class-name]` to `o instanceof __[class-name]` where applicable
+                 * Set `o instanceof <class-name>` to `o instanceof __<class-name>` where applicable
                  */
                 const {
                     node: { right, operator },
@@ -58,11 +58,11 @@ export default function () {
 
             MemberExpression(path) {
                 /**
-                 * Set `[obj-name].prototype` to `__[obj-name].prototype` where applicable
+                 * Set `<obj-name>.prototype` to `__<obj-name>.prototype` where applicable
                  */
                 const { node } = path;
-                // If the object has an equivalent`__[obj-name]` and is accessing prototype,
-                // change the prototype's object from `[pbj-name]` to `__[obj-name]`
+                // If the object has an equivalent`__<obj-name>` and is accessing prototype,
+                // change the prototype's object from `[pbj-name]` to `__<obj-name>`
                 if (
                     node.property.name === "prototype" &&
                     seen.includes(node.object.name)
