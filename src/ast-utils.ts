@@ -51,6 +51,20 @@ const ctorBlock = (
     return ctorBlock;
 };
 
+const ctorMethod = (
+    node: t.ClassDeclaration,
+    constr: t.ClassMethod
+): t.ClassMethod =>
+    /**
+     * Builds whole `ctor(<params>)` method
+     */
+    t.classMethod(
+        "method",
+        t.identifier("ctor"),
+        constr ? [...constr.params] : [t.restElement(t.identifier("args"))],
+        ctorBlock(constr, node)
+    );
+
 const initBlock = (
     node: t.ClassDeclaration,
     classProps: t.ClassProperty[]
@@ -82,19 +96,91 @@ const initBlock = (
     return initBlock;
 };
 
-const ctorMethod = (
-    constr: t.ClassMethod,
+const initMethod = (
+    classProps: t.ClassProperty[],
     node: t.ClassDeclaration
 ): t.ClassMethod =>
     /**
-     * Builds whole `ctor(<params>)` method
+     * Builds whole `initProps()` method
+     *
+     * initProps() {
+     *     super.initProps();
+     *     this.foo = "bar";
+     *     // Other class properties...
+     * }
      */
     t.classMethod(
         "method",
-        t.identifier("ctor"),
-        constr ? [...constr.params] : [t.restElement(t.identifier("args"))],
-        ctorBlock(constr, node)
+        t.identifier("initProps"),
+        [],
+        initBlock(node, classProps)
     );
+
+const buildUnderscoredConstructorBlock = (
+    node: t.ClassDeclaration,
+    constr: t.ClassMethod
+) =>
+    /**
+     * Builds the constructor method block for underscored class
+     *
+     * ```
+     * __class = new __A;
+     * __class.initProps();
+     * __class.ctor();
+     * return __class;
+     * ```
+     *
+     */
+    t.blockStatement([
+        t.variableDeclaration("var", [
+            t.variableDeclarator(
+                t.identifier("__class"),
+                t.newExpression(t.identifier(`__${node.id.name}`), [])
+            ),
+        ]),
+        callMemberExpression(t.identifier("__class"), "initProps"),
+        callMemberExpression(
+            t.identifier("__class"),
+            "ctor",
+            // Spread constructor args up to parent ctor if no explicit params
+            constr
+                ? ([...constr.params] as t.Identifier[])
+                : [t.spreadElement(t.identifier("args"))]
+        ),
+        t.returnStatement(t.identifier("__class")),
+    ]);
+
+const buildUnderscoredConstructorMethod = (node: t.ClassDeclaration) => {
+    /**
+     * Builds the constructor method for underscored class
+     *
+     * ```
+     * constructor() {
+     *     __class = new __A;
+     *     __class.initProps();
+     *     __class.ctor();
+     *     return __class;
+     * }
+     * ```
+     */
+    const constr = node.body.body.find(
+        (n) =>
+            t.isClassMethod(n) &&
+            t.isIdentifier(n.key) &&
+            n.key.name === "constructor"
+    ) as t.ClassMethod;
+
+    return t.classMethod(
+        "constructor",
+        t.identifier("constructor"),
+        constr
+            ? // TODO - Make all `ClassMethod["params"]` assignable to `CallExpression["arguments"]`
+              // i.e. assign `RestElement` to `SpreadElement` and `param = <defaultParam>` to `param || defaultParam`
+              ([...constr.params] as t.Identifier[])
+            : [t.restElement(t.identifier("args"))],
+        buildUnderscoredConstructorBlock(node, constr)
+    );
+};
 
 export const buildClassAST = (
     path: NodePath<t.ClassDeclaration>
@@ -114,50 +200,13 @@ export const buildClassAST = (
      * ```
      */
     const { node } = path;
-    const constr = node.body.body.find(
-        (n) =>
-            t.isClassMethod(n) &&
-            t.isIdentifier(n.key) &&
-            n.key.name === "constructor"
-    ) as t.ClassMethod;
 
     return t.classDeclaration(
         // Prefix with `__$TRANSFORMED__` then remove later, as for some reason babel
         // throws a "duplicate name" error when swapping a class with one of the same name
         t.identifier(`__$TRANSFORMED__${node.id.name}`),
         null,
-        t.classBody([
-            t.classMethod(
-                "constructor",
-                t.identifier("constructor"),
-                constr
-                    ? // TODO - Make all `ClassMethod["params"]` assignable to `CallExpression["arguments"]`
-                      // i.e. assign `RestElement` to `SpreadElement` and `param = <defaultParam>` to `param || defaultParam`
-                      ([...constr.params] as t.Identifier[])
-                    : [t.restElement(t.identifier("args"))],
-                t.blockStatement([
-                    t.variableDeclaration("var", [
-                        t.variableDeclarator(
-                            t.identifier("__class"),
-                            t.newExpression(
-                                t.identifier(`__${node.id.name}`),
-                                []
-                            )
-                        ),
-                    ]),
-                    callMemberExpression(t.identifier("__class"), "initProps"),
-                    callMemberExpression(
-                        t.identifier("__class"),
-                        "ctor",
-                        // Spread constructor args up to parent ctor if no explicit params
-                        constr
-                            ? ([...constr.params] as t.Identifier[])
-                            : [t.spreadElement(t.identifier("args"))]
-                    ),
-                    t.returnStatement(t.identifier("__class")),
-                ])
-            ),
-        ])
+        t.classBody([buildUnderscoredConstructorMethod(node)])
     );
 };
 
@@ -230,13 +279,8 @@ export const buildUnderscoredClassAST = (
             : null,
         t.classBody([
             ...remainingBody,
-            ctorMethod(constr, node),
-            t.classMethod(
-                "method",
-                t.identifier("initProps"),
-                [],
-                initBlock(node, classProps)
-            ),
+            ctorMethod(node, constr),
+            initMethod(classProps, node),
         ])
     );
 };
