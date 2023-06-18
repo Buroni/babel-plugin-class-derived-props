@@ -58,7 +58,10 @@ export default function () {
                 const {
                     node: { right, operator },
                 } = path;
-                if (operator === "instanceof") {
+                if (
+                    operator === "instanceof" &&
+                    path.scope.hasBinding(`__${right.name}`)
+                ) {
                     path.get("right").replaceWith(
                         t.identifier(`__${right.name}`)
                     );
