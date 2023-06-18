@@ -8,6 +8,12 @@ const { b6 } = require("./dist/mixins");
 const { b7 } = require("./dist/base-method-derived");
 const { b8 } = require("./dist/dup-classnames");
 const { b9 } = require("./dist/3rd-party");
+const { a10 } = require("./dist/single-class");
+
+test("Simple class properties and methods should act as normal", () => {
+    expect(a10.a).toBe("a");
+    expect(a10.message()).toBe("a");
+});
 
 test("Property defined in base class should have derived value in same scope", () => {
     expect(b.y).toBe("b");
