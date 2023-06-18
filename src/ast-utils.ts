@@ -1,5 +1,39 @@
 import { types as t, NodePath } from "@babel/core";
 
+const getSuperArgs = (
+    constr: t.ClassMethod
+): t.CallExpression["arguments"] | undefined => {
+    /**
+     * Get `<args`> from `super(<args>)`
+     */
+    if (!constr) {
+        return;
+    }
+    const superCall = constr.body.body.find(
+        (n) =>
+            t.isExpressionStatement(n) &&
+            t.isCallExpression(n.expression) &&
+            n.expression.callee.type === "Super"
+    ) as t.ExpressionStatement | undefined;
+
+    const callExpression = superCall?.expression as
+        | t.CallExpression
+        | undefined;
+
+    return callExpression?.arguments;
+};
+
+const getConstr = (classDeclr: t.ClassDeclaration): t.ClassMethod | undefined =>
+    /**
+     * Get constructor method from class declaration
+     */
+    classDeclr.body.body.find(
+        (n) =>
+            t.isClassMethod(n) &&
+            t.isIdentifier(n.key) &&
+            n.key.name === "constructor"
+    ) as t.ClassMethod;
+
 const callMemberExpression = (
     member: t.Expression,
     property: string,
@@ -17,25 +51,24 @@ const callMemberExpression = (
 
 const ctorBlock = (
     constr: t.ClassMethod,
-    node: t.ClassDeclaration
+    node: t.ClassDeclaration,
+    superArgs: t.CallExpression["arguments"]
 ): t.BlockStatement => {
     /**
      * Builds block body inside `ctor(<params>)` methods
      */
-    const superCtorCall = (constr: any) =>
+    const superCtorCall = () =>
         /**
          * Builds `ctor.super(<params>)`
          */
         callMemberExpression(
             t.super(),
             "ctor",
-            constr
-                ? [...constr.params]
-                : [t.spreadElement(t.identifier("args"))]
+            superArgs ? [...superArgs] : [t.spreadElement(t.identifier("args"))]
         );
 
     const ctorBlock = t.blockStatement([
-        node.superClass ? superCtorCall(constr) : t.emptyStatement(),
+        node.superClass ? superCtorCall() : t.emptyStatement(),
     ]);
 
     // Push original class constructor properties (except `super`) to underscored class `ctor()`
@@ -53,7 +86,8 @@ const ctorBlock = (
 
 const ctorMethod = (
     node: t.ClassDeclaration,
-    constr: t.ClassMethod
+    constr: t.ClassMethod,
+    superArgs: t.CallExpression["arguments"]
 ): t.ClassMethod =>
     /**
      * Builds whole `ctor(<params>)` method
@@ -62,7 +96,7 @@ const ctorMethod = (
         "method",
         t.identifier("ctor"),
         constr ? [...constr.params] : [t.restElement(t.identifier("args"))],
-        ctorBlock(constr, node)
+        ctorBlock(constr, node, superArgs)
     );
 
 const initBlock = (
@@ -118,7 +152,8 @@ const initMethod = (
 
 const buildUnderscoredConstructorBlock = (
     node: t.ClassDeclaration,
-    constr: t.ClassMethod
+    constr: t.ClassMethod,
+    superArgs: t.CallExpression["arguments"]
 ) =>
     /**
      * Builds the constructor method block for underscored class
@@ -143,9 +178,7 @@ const buildUnderscoredConstructorBlock = (
             t.identifier("__class"),
             "ctor",
             // Spread constructor args up to parent ctor if no explicit params
-            constr
-                ? ([...constr.params] as t.Identifier[])
-                : [t.spreadElement(t.identifier("args"))]
+            superArgs ? [...superArgs] : [t.spreadElement(t.identifier("args"))]
         ),
         t.returnStatement(t.identifier("__class")),
     ]);
@@ -163,22 +196,15 @@ const buildUnderscoredConstructorMethod = (node: t.ClassDeclaration) => {
      * }
      * ```
      */
-    const constr = node.body.body.find(
-        (n) =>
-            t.isClassMethod(n) &&
-            t.isIdentifier(n.key) &&
-            n.key.name === "constructor"
-    ) as t.ClassMethod;
+    const constr = getConstr(node);
+
+    const superArgs = getSuperArgs(constr);
 
     return t.classMethod(
         "constructor",
         t.identifier("constructor"),
-        constr
-            ? // TODO - Make all `ClassMethod["params"]` assignable to `CallExpression["arguments"]`
-              // i.e. assign `RestElement` to `SpreadElement` and `param = <defaultParam>` to `param || defaultParam`
-              ([...constr.params] as t.Identifier[])
-            : [t.restElement(t.identifier("args"))],
-        buildUnderscoredConstructorBlock(node, constr)
+        constr ? [...constr.params] : [t.restElement(t.identifier("args"))],
+        buildUnderscoredConstructorBlock(node, constr, superArgs)
     );
 };
 
@@ -243,12 +269,9 @@ export const buildUnderscoredClassAST = (
      * ```
      */
     const { node } = path;
-    const constr = node.body.body.find(
-        (n) =>
-            t.isClassMethod(n) &&
-            t.isIdentifier(n.key) &&
-            n.key.name === "constructor"
-    ) as t.ClassMethod;
+
+    const constr = getConstr(node);
+    const superArgs = getSuperArgs(constr);
 
     // `body` array of a `ClassBody` node
     const classBody = path.get("body").get("body");
@@ -279,7 +302,7 @@ export const buildUnderscoredClassAST = (
             : null,
         t.classBody([
             ...remainingBody,
-            ctorMethod(node, constr),
+            ctorMethod(node, constr, superArgs),
             initMethod(classProps, node),
         ])
     );

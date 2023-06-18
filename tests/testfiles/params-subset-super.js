@@ -1,7 +1,10 @@
 class A5 {
     result;
     constructor(a, b) {
-        this.result = a + b;
+        this.result = a;
+        if (b) {
+            this.result += b;
+        }
     }
 }
 
