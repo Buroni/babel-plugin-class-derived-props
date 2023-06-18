@@ -1,4 +1,4 @@
-import { transform } from "@babel/core";
+import { transform, parseSync } from "@babel/core";
 import plugin from "../src/index";
 import fs from "fs";
 import path from "path";
@@ -10,7 +10,10 @@ const ls = async (path_: string) => {
     const dir = await fs.promises.opendir(path_);
     const paths = [];
     for await (const dirent of dir) {
-        paths.push(path.resolve(path_, dirent.name));
+        const dirPath = path.resolve(path_, dirent.name);
+        if (!(await fs.promises.lstat(dirPath)).isDirectory()) {
+            paths.push(dirPath);
+        }
     }
     return paths;
 };
@@ -33,4 +36,17 @@ const ls = async (path_: string) => {
             output.code
         );
     }
+
+    // TODO - mock instead of copying
+    await fs.promises.cp(
+        path.resolve(__dirname, "testfiles", "utils"),
+        path.resolve(DIST_PATH, "utils"),
+        { recursive: true }
+    );
 })();
+
+// import {parseSync} from "@babel/core";
+//
+// const code = "a.ctor && a.ctor(...args)";
+//
+// console.dir(parseSync(code), { depth: null });

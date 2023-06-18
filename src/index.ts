@@ -25,9 +25,6 @@ const isProcessedClass = (path: NodePath<t.ClassDeclaration>) => {
 };
 
 export default function () {
-    // Classes already visited
-    const seen = [];
-
     return {
         visitor: {
             ClassDeclaration(path) {
@@ -41,10 +38,7 @@ export default function () {
                     return;
                 }
 
-                path.insertBefore(buildUnderscoredClassAST(path, seen));
-
-                // TODO - remove need for `seen`
-                seen.push(`__${node.id.name}`);
+                path.insertBefore(buildUnderscoredClassAST(path));
 
                 // Replace original class with wrapper that returns underscored class
                 path.replaceWith(buildWrapperClassAST(path));
@@ -55,8 +49,6 @@ export default function () {
                     "__$TRANSFORMED__",
                     ""
                 );
-
-                seen.push(node.id.name);
             },
 
             BinaryExpression(path) {
@@ -66,7 +58,7 @@ export default function () {
                 const {
                     node: { right, operator },
                 } = path;
-                if (operator === "instanceof" && seen.includes(right.name)) {
+                if (operator === "instanceof") {
                     path.get("right").replaceWith(
                         t.identifier(`__${right.name}`)
                     );
@@ -82,7 +74,7 @@ export default function () {
                 // change the prototype's object from `[pbj-name]` to `__<obj-name>`
                 if (
                     node.property.name === "prototype" &&
-                    seen.includes(node.object.name)
+                    path.scope.hasBinding(`__${node.object.name}`)
                 ) {
                     path.get("object").replaceWith(
                         t.identifier(`__${node.object.name}`)

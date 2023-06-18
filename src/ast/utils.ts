@@ -24,12 +24,18 @@ export const callMemberExpression = (
     args: t.CallExpression["arguments"] = []
 ): t.ExpressionStatement =>
     /**
-     * Calling an object member, e.g. `this.initProps()`
+     * Calling an object member, e.g. `this.initProps && this.initProps()`
+     *
+     * The existence check is to make the call a no-op for 3rd party classes and base classes
      */
     t.expressionStatement(
-        t.callExpression(
+        t.logicalExpression(
+            "&&",
             t.memberExpression(member, t.identifier(property)),
-            args
+            t.callExpression(
+                t.memberExpression(member, t.identifier(property)),
+                args
+            )
         )
     );
 

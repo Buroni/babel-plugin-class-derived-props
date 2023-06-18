@@ -7,17 +7,17 @@ import {
     isConstr,
 } from "./utils";
 
-const underscoreSuperClass = (
-    superClassPath: NodePath<t.Expression>,
-    seen: string[]
-) => {
+const underscoreSuperClass = (superClassPath: NodePath<t.Expression>) => {
     /**
      * For class with `extends B` convert to `extends __B`
      * Also works with mixins e.g. `extends myMixIn(B)`
      *
      * TODO - don't do this in-place
      */
-    if (t.isIdentifier(superClassPath.node)) {
+    if (
+        t.isIdentifier(superClassPath.node) &&
+        superClassPath.scope.hasBinding(`__${superClassPath.node.name}`)
+    ) {
         superClassPath.replaceWith(
             t.identifier(`__${superClassPath.node.name}`)
         );
@@ -25,7 +25,7 @@ const underscoreSuperClass = (
     }
     superClassPath.traverse({
         Identifier(idPath: NodePath<t.Identifier>) {
-            if (seen.includes(idPath.node.name)) {
+            if (idPath.scope.hasBinding(`__${idPath.node.name}`)) {
                 idPath.replaceWith(t.identifier(`__${idPath.node.name}`));
                 idPath.stop();
             }
@@ -51,9 +51,7 @@ const ctorBlock = (
             superArgs ? [...superArgs] : [t.spreadElement(t.identifier("args"))]
         );
 
-    const ctorBlock = t.blockStatement([
-        node.superClass ? superCtorCall() : t.emptyStatement(),
-    ]);
+    const ctorBlock = t.blockStatement([superCtorCall()]);
 
     // Push original class constructor properties (except `super`) to underscored class `ctor()`
     if (constr) {
@@ -88,11 +86,9 @@ const initBlock = (
      * Builds block body inside `initProps()` method
      */
 
-    const superInitCall = node.superClass
-        ? callMemberExpression(t.super(), "initProps")
-        : t.emptyStatement();
-
-    const initBlock = t.blockStatement([superInitCall]);
+    const initBlock = t.blockStatement([
+        callMemberExpression(t.super(), "initProps"),
+    ]);
 
     // Push constructor class properties to `initProps()`,
     // e.g. `foo = "bar"` in the class body becomes `this.foo = "bar"` in `initProps()`
@@ -132,8 +128,7 @@ const initMethod = (
     );
 
 export const buildUnderscoredClassAST = (
-    path: NodePath<t.ClassDeclaration>,
-    seen: string[]
+    path: NodePath<t.ClassDeclaration>
 ): t.ClassDeclaration => {
     /**
      * Builds the underscored class `__<class-name>` for each class, e.g.
@@ -170,10 +165,7 @@ export const buildUnderscoredClassAST = (
     const superArgs = getSuperArgs(constr);
 
     if (node.superClass) {
-        underscoreSuperClass(
-            path.get("superClass") as NodePath<t.Expression>,
-            seen
-        );
+        underscoreSuperClass(path.get("superClass") as NodePath<t.Expression>);
     }
 
     // `body` array of a `ClassBody` node

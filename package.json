@@ -5,6 +5,7 @@
     "scripts": {
         "build:tests": "ts-node tests/buid-tests.ts",
         "test": "npm run build:tests && jest",
+        "test:nobuild": "jest",
         "lint": "prettier --write ."
     },
     "keywords": [],
