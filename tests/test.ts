@@ -5,6 +5,7 @@ const { isInstanceOf, prototypeMethod, TEST_MSG } = require("./dist/prototype");
 const { c } = require("./dist/multiple-inheritance-getter");
 const { c5 } = require("./dist/params-subset-super");
 const { b6 } = require("./dist/mixins");
+const { b7 } = require("./dist/base-method-derived");
 
 test("Property defined in base class should have derived value in same scope", () => {
     expect(b.y).toBe("b");
@@ -49,4 +50,12 @@ test("Base class shouldn't inherit constructor param left out of `super`", () =>
 
 test("Mixins should inherit as normal", () => {
     expect(b6.mult(2)).toBe(4);
+});
+
+test("Mixins should inherit as normal", () => {
+    expect(b6.mult(2)).toBe(4);
+});
+
+test("Class properties defined on the base class should be available in the erived class", () => {
+    expect(b7.something).toBe("ok");
 });
