@@ -17,6 +17,7 @@ const ls = async (path_: string) => {
 
 (async () => {
     const testFiles = await ls(path.resolve(__dirname, "testfiles"));
+
     await fs.promises.rm(DIST_PATH, { force: true, recursive: true });
     await fs.promises.mkdir(DIST_PATH);
 

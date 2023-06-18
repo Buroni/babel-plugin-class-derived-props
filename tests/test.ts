@@ -6,6 +6,7 @@ const { c } = require("./dist/multiple-inheritance-getter");
 const { c5 } = require("./dist/params-subset-super");
 const { b6 } = require("./dist/mixins");
 const { b7 } = require("./dist/base-method-derived");
+const { b8 } = require("./dist/dup-classnames");
 
 test("Property defined in base class should have derived value in same scope", () => {
     expect(b.y).toBe("b");
@@ -58,4 +59,8 @@ test("Mixins should inherit as normal", () => {
 
 test("Class properties defined on the base class should be available in the erived class", () => {
     expect(b7.something).toBe("ok");
+});
+
+test("Two classes with the same name in different scopes should inherit within their own scopes", () => {
+    expect(b8.message).toBe("B8");
 });

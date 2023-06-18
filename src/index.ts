@@ -1,5 +1,28 @@
-import { types as t } from "@babel/core";
+import { NodePath, types as t } from "@babel/core";
 import { buildUnderscoredClassAST, buildWrapperClassAST } from "./ast/index";
+
+const isProcessedClass = (path: NodePath<t.ClassDeclaration>) => {
+    /**
+     * Check if class has already been visited, i.e. has underscored name prefix or wrapped `__class` property
+     */
+    const { node } = path;
+
+    if (node.id.name.startsWith("__")) {
+        return true;
+    }
+
+    let isProcessed = false;
+    path.traverse({
+        Identifier(idPath) {
+            if (idPath.node.name === "__class") {
+                isProcessed = true;
+                idPath.stop();
+            }
+        },
+    });
+
+    return isProcessed;
+};
 
 export default function () {
     // Classes already visited
@@ -14,20 +37,14 @@ export default function () {
                  */
                 const { node } = path;
 
-                if (
-                    node.id.name.startsWith("__") ||
-                    seen.includes(node.id.name)
-                ) {
+                if (isProcessedClass(path)) {
                     return;
                 }
 
-                const underscoredClassName = `__${node.id.name}`;
+                path.insertBefore(buildUnderscoredClassAST(path, seen));
 
-                if (!seen.includes(underscoredClassName)) {
-                    // Insert the underscored class before original class
-                    path.insertBefore(buildUnderscoredClassAST(path, seen));
-                    seen.push(underscoredClassName);
-                }
+                // TODO - remove need for `seen`
+                seen.push(`__${node.id.name}`);
 
                 // Replace original class with wrapper that returns underscored class
                 path.replaceWith(buildWrapperClassAST(path));
