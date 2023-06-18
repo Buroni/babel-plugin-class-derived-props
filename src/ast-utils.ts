@@ -281,7 +281,6 @@ export const buildUnderscoredClassAST = (
     // Other (non-constructor) class methods/getters which aren't properties should be copied across to underscored class
     const remainingBody = classBody
         .map((p) => p.node)
-        // TODO -- move into `isConstructor` helper
         .filter((n) => !t.isClassProperty(n) && !isConstr(n));
 
     return t.classDeclaration(
