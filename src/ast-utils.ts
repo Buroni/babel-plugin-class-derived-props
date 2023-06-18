@@ -1,5 +1,8 @@
 import { types as t, NodePath } from "@babel/core";
 
+const isConstr = (n: t.Node): boolean =>
+    t.isClassMethod(n) && t.isIdentifier(n.key) && n.key.name === "constructor";
+
 const getSuperArgs = (
     constr: t.ClassMethod
 ): t.CallExpression["arguments"] | undefined => {
@@ -27,12 +30,7 @@ const getConstr = (classDeclr: t.ClassDeclaration): t.ClassMethod | undefined =>
     /**
      * Get constructor method from class declaration
      */
-    classDeclr.body.body.find(
-        (n) =>
-            t.isClassMethod(n) &&
-            t.isIdentifier(n.key) &&
-            n.key.name === "constructor"
-    ) as t.ClassMethod;
+    classDeclr.body.body.find((n) => isConstr(n)) as t.ClassMethod;
 
 const callMemberExpression = (
     member: t.Expression,
@@ -284,15 +282,7 @@ export const buildUnderscoredClassAST = (
     const remainingBody = classBody
         .map((p) => p.node)
         // TODO -- move into `isConstructor` helper
-        .filter(
-            (n) =>
-                !t.isClassProperty(n) &&
-                !(
-                    t.isClassMethod(n) &&
-                    t.isIdentifier(n.key) &&
-                    n.key.name === "constructor"
-                )
-        );
+        .filter((n) => !t.isClassProperty(n) && !isConstr(n));
 
     return t.classDeclaration(
         t.identifier(`__${node.id.name}`),
