@@ -1,7 +1,14 @@
 import { types as t, NodePath } from "@babel/core";
 
-const isConstr = (n: t.Node): boolean =>
+const isConstr = (n: t.Node): n is t.ClassMethod =>
     t.isClassMethod(n) && t.isIdentifier(n.key) && n.key.name === "constructor";
+
+const isSuperCall = (
+    n: t.Node
+): n is t.ExpressionStatement & { expression: t.CallExpression } =>
+    t.isExpressionStatement(n) &&
+    t.isCallExpression(n.expression) &&
+    n.expression.callee.type === "Super";
 
 const getSuperArgs = (
     constr: t.ClassMethod
@@ -12,17 +19,9 @@ const getSuperArgs = (
     if (!constr) {
         return;
     }
-    const superCall = constr.body.body.find(
-        (n) =>
-            t.isExpressionStatement(n) &&
-            t.isCallExpression(n.expression) &&
-            n.expression.callee.type === "Super"
-    ) as t.ExpressionStatement | undefined;
+    const superCall = constr.body.body.find(isSuperCall);
 
-    const callExpression = superCall?.expression as
-        | t.CallExpression
-        | undefined;
-
+    const callExpression = superCall?.expression;
     return callExpression?.arguments;
 };
 
@@ -30,7 +29,7 @@ const getConstr = (classDeclr: t.ClassDeclaration): t.ClassMethod | undefined =>
     /**
      * Get constructor method from class declaration
      */
-    classDeclr.body.body.find((n) => isConstr(n)) as t.ClassMethod;
+    classDeclr.body.body.find(isConstr);
 
 const callMemberExpression = (
     member: t.Expression,
@@ -72,10 +71,7 @@ const ctorBlock = (
     // Push original class constructor properties (except `super`) to underscored class `ctor()`
     if (constr) {
         ctorBlock.body.push(
-            ...(constr.body.body as t.ExpressionStatement[]).filter(
-                (b) =>
-                    (b.expression as t.CallExpression)?.callee?.type !== "Super"
-            )
+            ...constr.body.body.filter((s: t.Statement) => !isSuperCall(s))
         );
     }
 
@@ -271,12 +267,18 @@ export const buildUnderscoredClassAST = (
     const constr = getConstr(node);
     const superArgs = getSuperArgs(constr);
 
+    if (node.superClass && !t.isIdentifier(node.superClass)) {
+        // TODO - Support mixins e.g. `class A extends mixin(B) {}`
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/extends#mix-ins
+        throw new Error("Non-identifier super class not supported");
+    }
+
     // `body` array of a `ClassBody` node
     const classBody = path.get("body").get("body");
 
     const classProps = classBody
         .map((p) => p.node)
-        .filter((n) => t.isClassProperty(n)) as t.ClassProperty[];
+        .filter((n): n is t.ClassProperty => t.isClassProperty(n));
 
     // Other (non-constructor) class methods/getters which aren't properties should be copied across to underscored class
     const remainingBody = classBody
@@ -285,7 +287,6 @@ export const buildUnderscoredClassAST = (
 
     return t.classDeclaration(
         t.identifier(`__${node.id.name}`),
-        // superClass is typed as `Expression` but seems only ever parsed as `Identifier`
         node.superClass
             ? t.identifier(`__${(node.superClass as t.Identifier).name}`)
             : null,
