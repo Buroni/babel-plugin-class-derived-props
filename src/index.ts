@@ -1,5 +1,5 @@
 import { types as t } from "@babel/core";
-import { buildUnderscoredClassAST, buildClassAST } from "./ast-utils";
+import { buildUnderscoredClassAST, buildWrapperClassAST } from "./ast/index";
 
 export default function () {
     // Classes already visited
@@ -30,7 +30,7 @@ export default function () {
                 }
 
                 // Replace original class with wrapper that returns underscored class
-                path.replaceWith(buildClassAST(path));
+                path.replaceWith(buildWrapperClassAST(path));
 
                 // Remove `__$TRANSFORMED__"` prefix from swapped class.
                 // Gets around babel complaining about swapping classes with same name

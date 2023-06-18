@@ -1,29 +1,11 @@
-import { types as t, NodePath } from "@babel/core";
-
-const isConstr = (n: t.Node): n is t.ClassMethod =>
-    t.isClassMethod(n) && t.isIdentifier(n.key) && n.key.name === "constructor";
-
-const isSuperCall = (
-    n: t.Node
-): n is t.ExpressionStatement & { expression: t.CallExpression } =>
-    t.isExpressionStatement(n) &&
-    t.isCallExpression(n.expression) &&
-    n.expression.callee.type === "Super";
-
-const getSuperArgs = (
-    constr: t.ClassMethod
-): t.CallExpression["arguments"] | undefined => {
-    /**
-     * Get `<args`> from `super(<args>)`
-     */
-    if (!constr) {
-        return;
-    }
-    const superCall = constr.body.body.find(isSuperCall);
-
-    const callExpression = superCall?.expression;
-    return callExpression?.arguments;
-};
+import { NodePath, types as t } from "@babel/core";
+import {
+    callMemberExpression,
+    getConstr,
+    getSuperArgs,
+    isSuperCall,
+    isConstr,
+} from "./utils";
 
 const underscoreSuperClass = (
     superClassPath: NodePath<t.Expression>,
@@ -50,27 +32,6 @@ const underscoreSuperClass = (
         },
     });
 };
-
-const getConstr = (classDeclr: t.ClassDeclaration): t.ClassMethod | undefined =>
-    /**
-     * Get constructor method from class declaration
-     */
-    classDeclr.body.body.find(isConstr);
-
-const callMemberExpression = (
-    member: t.Expression,
-    property: string,
-    args: t.CallExpression["arguments"] = []
-): t.ExpressionStatement =>
-    /**
-     * Calling an object member, e.g. `this.initProps()`
-     */
-    t.expressionStatement(
-        t.callExpression(
-            t.memberExpression(member, t.identifier(property)),
-            args
-        )
-    );
 
 const ctorBlock = (
     constr: t.ClassMethod,
@@ -169,92 +130,6 @@ const initMethod = (
         [],
         initBlock(node, classProps)
     );
-
-const buildUnderscoredConstructorBlock = (
-    node: t.ClassDeclaration,
-    constr: t.ClassMethod,
-    superArgs: t.CallExpression["arguments"]
-) =>
-    /**
-     * Builds the constructor method block for underscored class
-     *
-     * ```
-     * __class = new __A;
-     * __class.initProps();
-     * __class.ctor();
-     * return __class;
-     * ```
-     *
-     */
-    t.blockStatement([
-        t.variableDeclaration("var", [
-            t.variableDeclarator(
-                t.identifier("__class"),
-                t.newExpression(t.identifier(`__${node.id.name}`), [])
-            ),
-        ]),
-        callMemberExpression(t.identifier("__class"), "initProps"),
-        callMemberExpression(
-            t.identifier("__class"),
-            "ctor",
-            // Spread constructor args up to parent ctor if no explicit params
-            superArgs ? [...superArgs] : [t.spreadElement(t.identifier("args"))]
-        ),
-        t.returnStatement(t.identifier("__class")),
-    ]);
-
-const buildUnderscoredConstructorMethod = (node: t.ClassDeclaration) => {
-    /**
-     * Builds the constructor method for underscored class
-     *
-     * ```
-     * constructor() {
-     *     __class = new __A;
-     *     __class.initProps();
-     *     __class.ctor();
-     *     return __class;
-     * }
-     * ```
-     */
-    const constr = getConstr(node);
-
-    const superArgs = getSuperArgs(constr);
-
-    return t.classMethod(
-        "constructor",
-        t.identifier("constructor"),
-        constr ? [...constr.params] : [t.restElement(t.identifier("args"))],
-        buildUnderscoredConstructorBlock(node, constr, superArgs)
-    );
-};
-
-export const buildClassAST = (
-    path: NodePath<t.ClassDeclaration>
-): t.ClassDeclaration => {
-    /**
-     * Builds the class wrapper which returns `__[clas-name]` internally, e.g.
-     *
-     * ```
-     * class A {
-     *     constructor() {
-     *         __class = new __A;
-     *         __class.initProps();
-     *         __class.ctor();
-     *         return __class;
-     *     }
-     * }
-     * ```
-     */
-    const { node } = path;
-
-    return t.classDeclaration(
-        // Prefix with `__$TRANSFORMED__` then remove later, as for some reason babel
-        // throws a "duplicate name" error when swapping a class with one of the same name
-        t.identifier(`__$TRANSFORMED__${node.id.name}`),
-        null,
-        t.classBody([buildUnderscoredConstructorMethod(node)])
-    );
-};
 
 export const buildUnderscoredClassAST = (
     path: NodePath<t.ClassDeclaration>,
