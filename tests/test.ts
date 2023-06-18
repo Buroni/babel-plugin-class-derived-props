@@ -4,6 +4,7 @@ const { jpg } = require("./dist/service");
 const { isInstanceOf, prototypeMethod, TEST_MSG } = require("./dist/prototype");
 const { c } = require("./dist/multiple-inheritance-getter");
 const { c5 } = require("./dist/params-subset-super");
+const { b6 } = require("./dist/mixins");
 
 test("Property defined in base class should have derived value in same scope", () => {
     expect(b.y).toBe("b");
@@ -44,4 +45,8 @@ test("Base class method should be reflected in sub class as normal", () => {
 
 test("Base class shouldn't inherit constructor param left out of `super`", () => {
     expect(c5.result).toBe("a");
+});
+
+test("Mixins should inherit as normal", () => {
+    expect(b6.mult(2)).toBe(4);
 });

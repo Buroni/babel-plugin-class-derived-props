@@ -25,6 +25,32 @@ const getSuperArgs = (
     return callExpression?.arguments;
 };
 
+const underscoreSuperClass = (
+    superClassPath: NodePath<t.Expression>,
+    seen: string[]
+) => {
+    /**
+     * For class with `extends B` convert to `extends __B`
+     * Also works with mixins e.g. `extends myMixIn(B)`
+     *
+     * TODO - don't do this in-place
+     */
+    if (t.isIdentifier(superClassPath.node)) {
+        superClassPath.replaceWith(
+            t.identifier(`__${superClassPath.node.name}`)
+        );
+        return;
+    }
+    superClassPath.traverse({
+        Identifier(idPath: NodePath<t.Identifier>) {
+            if (seen.includes(idPath.node.name)) {
+                idPath.replaceWith(t.identifier(`__${idPath.node.name}`));
+                idPath.stop();
+            }
+        },
+    });
+};
+
 const getConstr = (classDeclr: t.ClassDeclaration): t.ClassMethod | undefined =>
     /**
      * Get constructor method from class declaration
@@ -231,7 +257,8 @@ export const buildClassAST = (
 };
 
 export const buildUnderscoredClassAST = (
-    path: NodePath<t.ClassDeclaration>
+    path: NodePath<t.ClassDeclaration>,
+    seen: string[]
 ): t.ClassDeclaration => {
     /**
      * Builds the underscored class `__<class-name>` for each class, e.g.
@@ -267,10 +294,11 @@ export const buildUnderscoredClassAST = (
     const constr = getConstr(node);
     const superArgs = getSuperArgs(constr);
 
-    if (node.superClass && !t.isIdentifier(node.superClass)) {
-        // TODO - Support mixins e.g. `class A extends mixin(B) {}`
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/extends#mix-ins
-        throw new Error("Non-identifier super class not supported");
+    if (node.superClass) {
+        underscoreSuperClass(
+            path.get("superClass") as NodePath<t.Expression>,
+            seen
+        );
     }
 
     // `body` array of a `ClassBody` node
@@ -287,9 +315,7 @@ export const buildUnderscoredClassAST = (
 
     return t.classDeclaration(
         t.identifier(`__${node.id.name}`),
-        node.superClass
-            ? t.identifier(`__${(node.superClass as t.Identifier).name}`)
-            : null,
+        node.superClass,
         t.classBody([
             ...remainingBody,
             ctorMethod(node, constr, superArgs),

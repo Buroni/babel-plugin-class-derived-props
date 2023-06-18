@@ -25,7 +25,7 @@ export default function () {
 
                 if (!seen.includes(underscoredClassName)) {
                     // Insert the underscored class before original class
-                    path.insertBefore(buildUnderscoredClassAST(path));
+                    path.insertBefore(buildUnderscoredClassAST(path, seen));
                     seen.push(underscoredClassName);
                 }
 
