@@ -1,5 +1,4 @@
 const EXPECTED_VAL_SERVICE = "jpg-image.me.com";
-const EXPECTED_VAL_X = "a from Image";
 
 class Service {
     url = "me.com";
@@ -14,25 +13,22 @@ class JpgImageService extends ImageService {
 }
 
 class Base {
-    service = new Service();
-    x;
-    message = "from Base";
+    ServiceType = Service;
+    service;
 
-    constructor(x) {
-        this.x = `${x} ${this.message}`;
-        this._service = this.service;
+    constructor() {
+        this.service = new this.ServiceType();
     }
 }
 
 class Image extends Base {
-    service = new ImageService();
-    message = "from Image";
+    ServiceType = ImageService;
 }
 
 class JpgImage extends Image {
-    service = new JpgImageService();
+    ServiceType = JpgImageService;
 }
 
-const jpg = new JpgImage("a");
+const jpg = new JpgImage();
 
-module.exports = { jpg, EXPECTED_VAL_SERVICE, EXPECTED_VAL_X };
+module.exports = { jpg, EXPECTED_VAL_SERVICE };

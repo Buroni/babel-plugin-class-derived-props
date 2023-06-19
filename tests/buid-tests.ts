@@ -44,3 +44,13 @@ const ls = async (path_: string) => {
         { recursive: true }
     );
 })();
+
+// import {parseSync} from "@babel/core";
+//
+// const code = `
+// class A {
+//     #foo = "bar";
+// }
+// `
+//
+// console.dir(parseSync(code), { depth: null });
