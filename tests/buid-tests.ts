@@ -29,6 +29,7 @@ const ls = async (path_: string) => {
 
         const output = await transform(content, {
             plugins: [plugin],
+            filename: f,
         });
 
         await fs.promises.writeFile(

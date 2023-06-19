@@ -2,7 +2,7 @@ import { NodePath, types as t } from "@babel/core";
 
 const randomNumberCode = () => Math.floor(Math.random() * 90000) + 10000;
 
-export const PLUGIN_PREFIX = `__${randomNumberCode()}_`;
+export const PLUGIN_PREFIX = `__`;
 
 export const withPluginPrefix = (name: string): string =>
     `${PLUGIN_PREFIX}${name}`;
@@ -13,7 +13,7 @@ export const isProcessedClass = (path: NodePath<t.ClassDeclaration>) => {
      */
     const { node } = path;
 
-    if (node.id.name.startsWith("__")) {
+    if (node.id.name.startsWith(PLUGIN_PREFIX)) {
         return true;
     }
 

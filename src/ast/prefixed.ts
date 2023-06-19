@@ -31,6 +31,7 @@ const prefixSuperClass = (superClassPath: NodePath<t.Expression>) => {
         Identifier(idPath: NodePath<t.Identifier>) {
             const idPrefixedName = withPluginPrefix(idPath.node.name);
 
+            // Only modify superclass to shadowed version if shadowed version is in scope
             if (idPath.scope.hasBinding(idPrefixedName)) {
                 idPath.replaceWith(t.identifier(idPrefixedName));
                 idPath.stop();
