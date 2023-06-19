@@ -1,3 +1,5 @@
+const EXPECTED_VAL = "a";
+
 class A5 {
     result;
     constructor(a, b) {
@@ -18,6 +20,6 @@ class C5 extends B5 {
     }
 }
 
-const c5 = new C5("a", "b");
+const c5 = new C5(EXPECTED_VAL, "b");
 
-module.exports = { c5 };
+module.exports = { c5, EXPECTED_VAL };

@@ -1,5 +1,7 @@
+const EXPECTED_VAL = "from derived";
+
 class A7 {
-    thing = "ok";
+    thing = EXPECTED_VAL;
     getThing() {
         return this.thing;
     }
@@ -10,4 +12,4 @@ class B7 extends A7 {
 
 const b7 = new B7();
 
-module.exports = { b7 };
+module.exports = { b7, EXPECTED_VAL };

@@ -6,27 +6,33 @@ import {
     isSuperCall,
     isConstr,
 } from "./utils";
+import { withPluginPrefix } from "../utils";
 
-const underscoreSuperClass = (superClassPath: NodePath<t.Expression>) => {
+const prefixSuperClass = (superClassPath: NodePath<t.Expression>) => {
     /**
      * For class with `extends B` convert to `extends __B`
      * Also works with mixins e.g. `extends myMixIn(B)`
      *
      * TODO - don't do this in-place
      */
+
     if (
         t.isIdentifier(superClassPath.node) &&
-        superClassPath.scope.hasBinding(`__${superClassPath.node.name}`)
+        superClassPath.scope.hasBinding(
+            withPluginPrefix(superClassPath.node.name)
+        )
     ) {
         superClassPath.replaceWith(
-            t.identifier(`__${superClassPath.node.name}`)
+            t.identifier(withPluginPrefix(superClassPath.node.name))
         );
         return;
     }
     superClassPath.traverse({
         Identifier(idPath: NodePath<t.Identifier>) {
-            if (idPath.scope.hasBinding(`__${idPath.node.name}`)) {
-                idPath.replaceWith(t.identifier(`__${idPath.node.name}`));
+            const idPrefixedName = withPluginPrefix(idPath.node.name);
+
+            if (idPath.scope.hasBinding(idPrefixedName)) {
+                idPath.replaceWith(t.identifier(idPrefixedName));
                 idPath.stop();
             }
         },
@@ -53,7 +59,7 @@ const ctorBlock = (
 
     const ctorBlock = t.blockStatement([superCtorCall()]);
 
-    // Push original class constructor properties (except `super`) to underscored class `ctor()`
+    // Push original class constructor properties (except `super`) to prefixed class `ctor()`
     if (constr) {
         ctorBlock.body.push(
             ...constr.body.body.filter((s: t.Statement) => !isSuperCall(s))
@@ -131,7 +137,7 @@ export const buildUnderscoredClassAST = (
     path: NodePath<t.ClassDeclaration>
 ): t.ClassDeclaration => {
     /**
-     * Builds the underscored class `__<class-name>` for each class, e.g.
+     * Builds the prefixed class `__<class-name>` for each class, e.g.
      *
      * ```
      * class A extends Base {
@@ -163,9 +169,10 @@ export const buildUnderscoredClassAST = (
 
     const constr = getConstr(node);
     const superArgs = getSuperArgs(constr);
+    const prefixedName = withPluginPrefix(node.id.name);
 
     if (node.superClass) {
-        underscoreSuperClass(path.get("superClass") as NodePath<t.Expression>);
+        prefixSuperClass(path.get("superClass") as NodePath<t.Expression>);
     }
 
     // `body` array of a `ClassBody` node
@@ -175,13 +182,13 @@ export const buildUnderscoredClassAST = (
         .map((p) => p.node)
         .filter((n): n is t.ClassProperty => t.isClassProperty(n));
 
-    // Other (non-constructor) class methods/getters which aren't properties should be copied across to underscored class
+    // Other (non-constructor) class methods/getters which aren't properties should be copied across to prefixed class
     const remainingBody = classBody
         .map((p) => p.node)
         .filter((n) => !t.isClassProperty(n) && !isConstr(n));
 
     return t.classDeclaration(
-        t.identifier(`__${node.id.name}`),
+        t.identifier(prefixedName),
         node.superClass,
         t.classBody([
             ...remainingBody,

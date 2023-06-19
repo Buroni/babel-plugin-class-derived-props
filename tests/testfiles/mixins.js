@@ -1,3 +1,5 @@
+const EXPECTED_VAL = 4;
+
 const multiplierMixin = (Base) =>
     class extends Base {
         mult(a, b) {
@@ -26,4 +28,4 @@ class B6 extends multiplierMixin(randomizerMixin(A6)) {
 
 const b6 = new B6();
 
-module.exports = { b6 };
+module.exports = { b6, EXPECTED_VAL };

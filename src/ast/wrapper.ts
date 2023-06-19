@@ -1,13 +1,14 @@
 import { types as t, NodePath } from "@babel/core";
 import { callMemberExpression, getConstr, getSuperArgs } from "./utils";
+import { withPluginPrefix } from "../utils";
 
 const buildWrapperConstructorBlock = (
     node: t.ClassDeclaration,
     constr: t.ClassMethod,
     superArgs: t.CallExpression["arguments"]
-) =>
+) => {
     /**
-     * Builds the constructor method block for underscored class
+     * Builds the constructor method block for prefixed class
      *
      * ```
      * __class = new __A;
@@ -17,26 +18,30 @@ const buildWrapperConstructorBlock = (
      * ```
      *
      */
-    t.blockStatement([
+    const prefixedClassVarName = withPluginPrefix("class");
+    const prefixedNodeName = withPluginPrefix(node.id.name);
+
+    return t.blockStatement([
         t.variableDeclaration("var", [
             t.variableDeclarator(
-                t.identifier("__class"),
-                t.newExpression(t.identifier(`__${node.id.name}`), [])
+                t.identifier(prefixedClassVarName),
+                t.newExpression(t.identifier(prefixedNodeName), [])
             ),
         ]),
-        callMemberExpression(t.identifier("__class"), "initProps"),
+        callMemberExpression(t.identifier(prefixedClassVarName), "initProps"),
         callMemberExpression(
-            t.identifier("__class"),
+            t.identifier(prefixedClassVarName),
             "ctor",
             // Spread constructor args up to parent ctor if no explicit params
             superArgs ? [...superArgs] : [t.spreadElement(t.identifier("args"))]
         ),
-        t.returnStatement(t.identifier("__class")),
+        t.returnStatement(t.identifier(prefixedClassVarName)),
     ]);
+};
 
 const buildWrapperConstructorMethod = (node: t.ClassDeclaration) => {
     /**
-     * Builds the constructor method for underscored class
+     * Builds the constructor method for prefixed class
      *
      * ```
      * constructor() {

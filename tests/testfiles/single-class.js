@@ -1,5 +1,7 @@
+const EXPECTED_VAL = "a";
+
 class A10 {
-    a = "a";
+    a = EXPECTED_VAL;
 
     message() {
         return this.a;
@@ -8,4 +10,4 @@ class A10 {
 
 const a10 = new A10();
 
-module.exports = { a10 };
+module.exports = { a10, EXPECTED_VAL };

@@ -1,77 +1,92 @@
-const { b } = require("./dist/simple");
-const { BFactory } = require("./dist/nested");
-const { jpg } = require("./dist/service");
-const { isInstanceOf, prototypeMethod, TEST_MSG } = require("./dist/prototype");
-const { c } = require("./dist/multiple-inheritance-getter");
-const { c5 } = require("./dist/params-subset-super");
-const { b6 } = require("./dist/mixins");
-const { b7 } = require("./dist/base-method-derived");
-const { b8 } = require("./dist/dup-classnames");
-const { b9 } = require("./dist/3rd-party");
-const { a10 } = require("./dist/single-class");
-
 test("Simple class properties and methods should act as normal", () => {
-    expect(a10.a).toBe("a");
-    expect(a10.message()).toBe("a");
+    const { a10, EXPECTED_VAL } = require("./dist/single-class");
+
+    expect(a10.a).toBe(EXPECTED_VAL);
+    expect(a10.message()).toBe(EXPECTED_VAL);
 });
 
 test("Property defined in base class should have derived value in same scope", () => {
-    expect(b.y).toBe("b");
+    const { b, EXPECTED_VAL } = require("./dist/simple-inheritance");
+
+    expect(b.y).toBe(EXPECTED_VAL);
 });
 
 test("Property defined in base class should have derived value when subclass is in inner scope", () => {
+    const { BFactory, EXPECTED_VAL } = require("./dist/nested");
     const b = BFactory();
-    expect(b.y).toBe("b");
+    expect(b.y).toBe(EXPECTED_VAL);
 });
 
 test("Injected service defined in base class should equal derived service", () => {
-    expect(jpg._service.url).toBe("jpg-image.me.com");
+    const { jpg, EXPECTED_VAL_SERVICE } = require("./dist/service");
+
+    expect(jpg._service.url).toBe(EXPECTED_VAL_SERVICE);
 });
 
 test("Property defined in base class should be set via derived class constructor argument", () => {
-    expect(jpg.x).toBe("a from Image");
+    const { jpg, EXPECTED_VAL_X } = require("./dist/service");
+
+    expect(jpg.x).toBe(EXPECTED_VAL_X);
 });
 
 test("`instanceof` should be patched", () => {
+    const { isInstanceOf } = require("./dist/prototype");
+
     expect(isInstanceOf).toBe(true);
 });
 
 test("Prototype should be patched", () => {
-    expect(prototypeMethod()).toBe(TEST_MSG);
+    const { prototypeMethod, EXPECTED_VAL } = require("./dist/prototype");
+
+    expect(prototypeMethod()).toBe(EXPECTED_VAL);
 });
 
 test("Getters should inherit as normal", () => {
-    expect(c.g).toBe("getter value overwritten");
+    const { c, EXPECTED_VAL_G } = require("./dist/multiple-inheritance-getter");
+
+    expect(c.g).toBe(EXPECTED_VAL_G);
 });
 
 test("Argument passed into subclass constructor should be reflected in base class as normal", () => {
-    expect(c.a).toBe("from C4");
+    const { c, EXPECTED_VAL_C } = require("./dist/multiple-inheritance-getter");
+
+    expect(c.a).toBe(EXPECTED_VAL_C);
 });
 
 test("Base class method should be reflected in sub class as normal", () => {
-    expect(c.baseMethod()).toBe("base method");
+    const {
+        c,
+        EXPECTED_VAL_BASEMETHOD,
+    } = require("./dist/multiple-inheritance-getter");
+
+    expect(c.baseMethod()).toBe(EXPECTED_VAL_BASEMETHOD);
 });
 
 test("Base class shouldn't inherit constructor param left out of `super`", () => {
-    expect(c5.result).toBe("a");
+    const { c5, EXPECTED_VAL } = require("./dist/params-subset-super");
+
+    expect(c5.result).toBe(EXPECTED_VAL);
 });
 
 test("Mixins should inherit as normal", () => {
-    expect(b6.mult(2)).toBe(4);
+    const { b6, EXPECTED_VAL } = require("./dist/mixins");
+
+    expect(b6.mult(2)).toBe(EXPECTED_VAL);
 });
 
-test("Mixins should inherit as normal", () => {
-    expect(b6.mult(2)).toBe(4);
-});
+test("Class properties defined on the base class should be available in the derived class", () => {
+    const { b7, EXPECTED_VAL } = require("./dist/base-method-derived");
 
-test("Class properties defined on the base class should be available in the erived class", () => {
-    expect(b7.something).toBe("ok");
+    expect(b7.something).toBe(EXPECTED_VAL);
 });
 
 test("Two classes with the same name in different scopes should inherit within their own scopes", () => {
-    expect(b8.message).toBe("B8");
+    const { b8, EXPECTED_VAL } = require("./dist/dup-classnames");
+
+    expect(b8.message).toBe(EXPECTED_VAL);
 });
 
 test("Plugin shouldn't interfere with 3rd party modules", () => {
-    expect(b9.from).toBe("cdn");
+    const { b9, EXPECTED_VAL } = require("./dist/3rd-party");
+    expect(b9.from).toBe(EXPECTED_VAL);
 });

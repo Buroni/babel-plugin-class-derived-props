@@ -1,3 +1,5 @@
+const EXPECTED_VAL = "B8";
+
 class A8 {
     name = "A8";
 }
@@ -12,10 +14,10 @@ const b8 = (() => {
     }
 
     class B8 extends A8 {
-        name = "B8";
+        name = EXPECTED_VAL;
     }
 
     return new B8();
 })();
 
-module.exports = { b8 };
+module.exports = { b8, EXPECTED_VAL };

@@ -1,3 +1,5 @@
+const EXPECTED_VAL = "b";
+
 class A {
     x = "a";
     y;
@@ -8,9 +10,9 @@ class A {
 }
 
 class B extends A {
-    x = "b";
+    x = EXPECTED_VAL;
 }
 
 const b = new B();
 
-module.exports = { b };
+module.exports = { b, EXPECTED_VAL };

@@ -1,3 +1,5 @@
+const EXPECTED_VAL = "b";
+
 class A2 {
     x = "a";
     y;
@@ -9,10 +11,10 @@ class A2 {
 
 const BFactory = () => {
     class B2 extends A2 {
-        x = "b";
+        x = EXPECTED_VAL;
     }
 
     return new B2();
 };
 
-module.exports = { BFactory };
+module.exports = { BFactory, EXPECTED_VAL };
