@@ -8,7 +8,7 @@ import {
 } from "./utils";
 import { withPluginPrefix } from "../utils";
 
-const prefixSuperClass = (superClassPath: NodePath<t.Expression>) => {
+const shadowSuperClass = (superClassPath: NodePath<t.Expression>) => {
     /**
      * For class with `extends B` convert to `extends __B`
      * Also works with mixins e.g. `extends myMixIn(B)`
@@ -29,11 +29,11 @@ const prefixSuperClass = (superClassPath: NodePath<t.Expression>) => {
     }
     superClassPath.traverse({
         Identifier(idPath: NodePath<t.Identifier>) {
-            const idPrefixedName = withPluginPrefix(idPath.node.name);
+            const idShadowedName = withPluginPrefix(idPath.node.name);
 
             // Only modify superclass to shadowed version if shadowed version is in scope
-            if (idPath.scope.hasBinding(idPrefixedName)) {
-                idPath.replaceWith(t.identifier(idPrefixedName));
+            if (idPath.scope.hasBinding(idShadowedName)) {
+                idPath.replaceWith(t.identifier(idShadowedName));
                 idPath.stop();
             }
         },
@@ -60,7 +60,7 @@ const ctorBlock = (
 
     const ctorBlock = t.blockStatement([superCtorCall()]);
 
-    // Push original class constructor properties (except `super`) to prefixed class `ctor()`
+    // Push original class constructor properties (except `super`) to shadowed class `ctor()`
     if (constr) {
         ctorBlock.body.push(
             ...constr.body.body.filter((s: t.Statement) => !isSuperCall(s))
@@ -138,7 +138,7 @@ export const buildUnderscoredClassAST = (
     path: NodePath<t.ClassDeclaration>
 ): t.ClassDeclaration => {
     /**
-     * Builds the prefixed class `__<class-name>` for each class, e.g.
+     * Builds the shadowed class `__<class-name>` for each class, e.g.
      *
      * ```
      * class A extends Base {
@@ -170,10 +170,10 @@ export const buildUnderscoredClassAST = (
 
     const constr = getConstr(node);
     const superArgs = getSuperArgs(constr);
-    const prefixedName = withPluginPrefix(node.id.name);
+    const shadowedName = withPluginPrefix(node.id.name);
 
     if (node.superClass) {
-        prefixSuperClass(path.get("superClass") as NodePath<t.Expression>);
+        shadowSuperClass(path.get("superClass") as NodePath<t.Expression>);
     }
 
     // `body` array of a `ClassBody` node
@@ -183,13 +183,13 @@ export const buildUnderscoredClassAST = (
         .map((p) => p.node)
         .filter((n): n is t.ClassProperty => t.isClassProperty(n));
 
-    // Other (non-constructor) class methods/getters which aren't properties should be copied across to prefixed class
+    // Other (non-constructor) class methods/getters which aren't properties should be copied across to shadowed class
     const remainingBody = classBody
         .map((p) => p.node)
         .filter((n) => !t.isClassProperty(n) && !isConstr(n));
 
     return t.classDeclaration(
-        t.identifier(prefixedName),
+        t.identifier(shadowedName),
         node.superClass,
         t.classBody([
             ...remainingBody,

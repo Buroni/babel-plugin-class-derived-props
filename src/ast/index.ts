@@ -1,4 +1,4 @@
 import { buildWrapperClassAST } from "./wrapper";
-import { buildUnderscoredClassAST } from "./prefixed";
+import { buildUnderscoredClassAST } from "./shadowed";
 
 export { buildWrapperClassAST, buildUnderscoredClassAST };

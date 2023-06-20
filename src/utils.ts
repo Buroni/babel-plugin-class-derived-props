@@ -10,7 +10,7 @@ export const withPluginPrefix = (name: string): string =>
 
 export const isProcessedClass = (path: NodePath<t.ClassDeclaration>) => {
     /**
-     * Check if class has already been visited, i.e. has prefixed name prefix or wrapped `__class` property
+     * Check if class has already been visited, i.e. has shadowed name shadow or wrapped `__class` property
      */
     const { node } = path;
 

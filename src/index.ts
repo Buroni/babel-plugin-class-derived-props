@@ -11,8 +11,8 @@ export default function () {
         visitor: {
             ClassDeclaration(path) {
                 /**
-                 * Create equivalent `__<class-name>` (prefixed) class for each class in the program, and transform the
-                 * original class to a container which returns the prefixed version
+                 * Create equivalent `__<class-name>` (shadowed) class for each class in the program, and transform the
+                 * original class to a container which returns the shadowed version
                  */
 
                 if (isProcessedClass(path)) {
@@ -21,10 +21,10 @@ export default function () {
 
                 path.insertBefore(buildUnderscoredClassAST(path));
 
-                // Replace original class with wrapper that returns prefixed class
+                // Replace original class with wrapper that returns shadowed class
                 path.replaceWith(buildWrapperClassAST(path));
 
-                // Remove `__$TRANSFORMED__"` prefix from swapped class.
+                // Remove `__$TRANSFORMED__"` shadow from swapped class.
                 // Gets around babel complaining about swapping classes with same name
                 path.node.id.name = path.node.id.name.replace(
                     TRANSFORMED_PREFIX,
@@ -39,13 +39,13 @@ export default function () {
                 const {
                     node: { right, operator },
                 } = path;
-                const prefixedName = withPluginPrefix(right.name);
+                const shadowedName = withPluginPrefix(right.name);
 
                 if (
                     operator === "instanceof" &&
-                    path.scope.hasBinding(prefixedName)
+                    path.scope.hasBinding(shadowedName)
                 ) {
-                    path.get("right").replaceWith(t.identifier(prefixedName));
+                    path.get("right").replaceWith(t.identifier(shadowedName));
                 }
             },
 
@@ -54,14 +54,14 @@ export default function () {
                  * Set `<obj-name>.prototype` to `__<obj-name>.prototype` where applicable
                  */
                 const { node } = path;
-                const prefixedName = withPluginPrefix(node.object.name);
+                const shadowedName = withPluginPrefix(node.object.name);
                 // If the object has an equivalent`__<obj-name>` and is accessing prototype,
                 // change the prototype's object from `[pbj-name]` to `__<obj-name>`
                 if (
                     node.property.name === "prototype" &&
-                    path.scope.hasBinding(prefixedName)
+                    path.scope.hasBinding(shadowedName)
                 ) {
-                    path.get("object").replaceWith(t.identifier(prefixedName));
+                    path.get("object").replaceWith(t.identifier(shadowedName));
                 }
             },
         },

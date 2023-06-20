@@ -8,7 +8,7 @@ const buildWrapperConstructorBlock = (
     superArgs: t.CallExpression["arguments"]
 ) => {
     /**
-     * Builds the constructor method block for prefixed class
+     * Builds the constructor method block for shadowed class
      *
      * ```
      * __class = new __A;
@@ -18,30 +18,30 @@ const buildWrapperConstructorBlock = (
      * ```
      *
      */
-    const prefixedClassVarName = withPluginPrefix("class");
-    const prefixedNodeName = withPluginPrefix(node.id.name);
+    const shadowedClassVarName = withPluginPrefix("class");
+    const shadowedNodeName = withPluginPrefix(node.id.name);
 
     return t.blockStatement([
         t.variableDeclaration("var", [
             t.variableDeclarator(
-                t.identifier(prefixedClassVarName),
-                t.newExpression(t.identifier(prefixedNodeName), [])
+                t.identifier(shadowedClassVarName),
+                t.newExpression(t.identifier(shadowedNodeName), [])
             ),
         ]),
-        callMemberExpression(t.identifier(prefixedClassVarName), "initProps"),
+        callMemberExpression(t.identifier(shadowedClassVarName), "initProps"),
         callMemberExpression(
-            t.identifier(prefixedClassVarName),
+            t.identifier(shadowedClassVarName),
             "ctor",
             // Spread constructor args up to parent ctor if no explicit params
             superArgs ? [...superArgs] : [t.spreadElement(t.identifier("args"))]
         ),
-        t.returnStatement(t.identifier(prefixedClassVarName)),
+        t.returnStatement(t.identifier(shadowedClassVarName)),
     ]);
 };
 
 const buildWrapperConstructorMethod = (node: t.ClassDeclaration) => {
     /**
-     * Builds the constructor method for prefixed class
+     * Builds the constructor method for shadowed class
      *
      * ```
      * constructor() {
