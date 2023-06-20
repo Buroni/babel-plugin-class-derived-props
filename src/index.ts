@@ -1,6 +1,10 @@
 import { types as t } from "@babel/core";
 import { buildUnderscoredClassAST, buildWrapperClassAST } from "./ast/index";
-import { isProcessedClass, withPluginPrefix } from "./utils";
+import {
+    isProcessedClass,
+    TRANSFORMED_PREFIX,
+    withPluginPrefix,
+} from "./utils";
 
 export default function () {
     return {
@@ -23,7 +27,7 @@ export default function () {
                 // Remove `__$TRANSFORMED__"` prefix from swapped class.
                 // Gets around babel complaining about swapping classes with same name
                 path.node.id.name = path.node.id.name.replace(
-                    "__$TRANSFORMED__",
+                    TRANSFORMED_PREFIX,
                     ""
                 );
             },

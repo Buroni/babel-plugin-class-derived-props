@@ -3,6 +3,7 @@ import { NodePath, types as t } from "@babel/core";
 const randomNumberCode = () => Math.floor(Math.random() * 90000) + 10000;
 
 export const PLUGIN_PREFIX = `__`;
+export const TRANSFORMED_PREFIX = "__$TRANSFORMED__";
 
 export const withPluginPrefix = (name: string): string =>
     `${PLUGIN_PREFIX}${name}`;

@@ -1,6 +1,6 @@
 import { types as t, NodePath } from "@babel/core";
 import { callMemberExpression, getConstr, getSuperArgs } from "./utils";
-import { withPluginPrefix } from "../utils";
+import { TRANSFORMED_PREFIX, withPluginPrefix } from "../utils";
 
 const buildWrapperConstructorBlock = (
     node: t.ClassDeclaration,
@@ -86,7 +86,7 @@ export const buildWrapperClassAST = (
     return t.classDeclaration(
         // Prefix with `__$TRANSFORMED__` then remove later, as for some reason babel
         // throws a "duplicate name" error when swapping a class with one of the same name
-        t.identifier(`__$TRANSFORMED__${node.id.name}`),
+        t.identifier(`${TRANSFORMED_PREFIX}${node.id.name}`),
         null,
         t.classBody([buildWrapperConstructorMethod(node)])
     );

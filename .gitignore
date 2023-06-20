@@ -87,6 +87,7 @@ example.js
 example.py
 build-example.ts
 example-arrow.js
+eaxmple-emitted.js
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
