@@ -1,7 +1,6 @@
 # babel-plugin-derived-class-props
 
-Allows ES6 derived class properties to be available in the base constructor,
-as is the case in most OOP languages.
+Allows ES6 derived class properties to be available in the base constructor like in python
 
 ```js
 class A {
